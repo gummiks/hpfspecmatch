@@ -131,6 +131,7 @@ docs/.*
 #DATA/
 #fitsheaders/
 #src/not_using/
-#input/
-#output/
+input/
+output/
+library/
 
