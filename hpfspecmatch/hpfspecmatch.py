@@ -834,7 +834,7 @@ def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_lo
     print('Saved to: {}'.format(savename))
 
 
-def summarize_values_from_orders(files_pkl):
+def summarize_values_from_orders(files_pkl,targetname):
     """
     Summarize values from different orders from SpecMatch analysis
 
@@ -848,10 +848,12 @@ def summarize_values_from_orders(files_pkl):
 
     Example:
         files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
-        summarize_values_from_orders(files)
+        summarize_values_from_orders(files,'AD_Leo')
     """
-    basedir, target = files_pkl[0].split(os.sep)[0:2]
-    savefolder = os.path.join(basedir,target)
+    #basedir = files_pkl[0].split(os.sep)[0:2]
+    #basedir = os.path.join(*files[0].split(os.sep)[0:-2])
+    savefolder = os.path.join(*files_pkl[0].split(os.sep)[0:-2])
+    target= targetname
     params = ['teff','logg','feh','vsini']
     results = []
     for filename in files_pkl:
