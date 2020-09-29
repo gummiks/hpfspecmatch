@@ -833,3 +833,42 @@ def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_lo
     fig.savefig(savename,dpi=200)
     print('Saved to: {}'.format(savename))
 
+
+def summarize_values_from_orders(files_pkl):
+    """
+    Summarize values from different orders from SpecMatch analysis
+
+    INPUT:
+        Name of pickle files
+
+    OUTPUT:
+        saves two .csv files:
+            1) a .csv file with the Teff, Fe/H, and logg values from all of the orders
+            2) a .csv file with the median and the standard deviation from different orders
+
+    Example:
+        files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
+        summarize_values_from_orders(files)
+    """
+    basedir, target = files_pkl[0].split(os.sep)[0:2]
+    savefolder = os.path.join(basedir,target)
+    params = ['teff','logg','feh','vsini']
+    results = []
+    for filename in files_pkl:
+        f = open(filename,'rb')
+        res = pickle.load(f)
+        results.append(res)
+        f.close()
+    df = pd.DataFrame(results)
+    df['filenames'] = files_pkl
+    medians = df.median(axis=0).values
+    stds = df.std(axis=0).values
+    
+    df_med = pd.DataFrame(list(zip(params,medians,stds)),columns=['parameters','median','std'])
+    
+    df.to_csv(savefolder+os.sep+target+'_overview.csv',index=False)
+    df_med.to_csv(savefolder+os.sep+target+'_med.csv',index=False)
+    
+    print('Saved to {}'.format(savefolder+os.sep+target+'_overview.csv'))
+    print('Saved to {}'.format(savefolder+os.sep+target+'_med.csv'))
+    return df, df_med
