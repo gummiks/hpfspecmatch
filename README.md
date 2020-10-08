@@ -1,5 +1,5 @@
-# specmatchhpf
-SpecMatch HPF: Spectral matching of HPF data
+# hpfspecmatch
+HPF SpecMatch: Spectral matching of HPF data
 
 # Installation
 
