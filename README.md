@@ -23,3 +23,6 @@ python setup.py install
 See example notebooks in the notebook folder, which gives an example of how to fit TOI-1468.
 You will need to download an example HPF spectral library and put in the library/ folder. 
 See instructions in the librarary/readme.md file, or in the example notebook.
+
+## New library (as of Oct 8, 2020)
+See new notes on experimental library from Oct 8 2020
