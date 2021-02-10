@@ -22,9 +22,28 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
     """
     Get data ready for MCMC
     
+    INPUT:
+        H1 - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        w - wavelength grid to interpolate on (array)
+        v - velocities in km/s to use for absolute RV consideration (array)
+#        polyvals - polynomial coefficients (array)
+#        vsinis - vsini values km/s (array)
+        plot - (boolean)
+
+    OUTPUT:
+        f1 - spectrum
+        e1 - spectrum flux error
+        ffrefs - spectra  (array)
+        eerefs - spectra flux errors (array)
+       
     EXAMPLE:
+#        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
+#       files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
+#       summarize_values_from_orders(files,'AD_Leo')
         
     """
+    
     H1.deblaze()
     _, rabs = H1.rvabs_for_orders(v,orders=[5],plot=plot)
     H1.redshift(rv=np.median(rabs))
@@ -108,8 +127,8 @@ class FitLinCombSpec(object):
         self.loggerr_known = loggerr_known
         
     def calculate_stellar_parameters(self,weights):
-        print('Weights',weights)
-        print('Teffs',self.teffs)
+        #print('Weights',weights)
+        #print('Teffs',self.teffs)
         if self.teffs != []:
             self.teff = weighted_value(self.teffs,weights)
         else: 
@@ -198,22 +217,22 @@ class FitLinCombSpec(object):
         https://github.com/hpparvi/PyDE
         """
         centers = np.array(self.lpf.ps.centers)
-        print("Running PyDE Optimizer")
+        #print("Running PyDE Optimizer")
         self.de = pyde.de.DiffEvol(self.lpf, self.lpf.ps.bounds, npop, maximize=maximize) # we want to maximize the likelihood
         self.min_pv, self.min_pv_lnval = self.de.optimize(ngen=de_iter)
-        print("Optimized using PyDE")
-        print("Final parameters:")
-        self.print_param_diagnostics(self.min_pv)
+        #print("Optimized using PyDE")
+        #print("Final parameters:")
+        #self.print_param_diagnostics(self.min_pv)
         #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
-        print("LogLn value:",self.min_pv_lnval)
-        print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
+        #print("LogLn value:",self.min_pv_lnval)
+        #print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
         if mcmc:
             print("Running MCMC")
             self.sampler = emcee.EnsembleSampler(npop, self.lpf.ps.ndim, self.lpf,threads=threads)
-            print("MCMC iterations=",mc_iter)
+            #print("MCMC iterations=",mc_iter)
             for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
                 print(i,end=" ")
-            print("Finished MCMC")
+            #print("Finished MCMC")
             
     def print_param_diagnostics(self,pv):
         """
@@ -297,19 +316,19 @@ class FitTargetRefStarPolynomial(object):
         fig.subplots_adjust(hspace=0.05)
         
     def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        print('Performing first Chebfit')
+        #print('Performing first Chebfit')
         #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         
-        print('Found centers:',centers_coeffs)
-        print('With CHI',self.chi2f(centers_coeffs))
+        #print('Found centers:',centers_coeffs)
+        #print('With CHI',self.chi2f(centers_coeffs))
         #centers = [1.]#+list(centers_coeffs)
         #print(len(centers),len(centers_coeffs))
         #random = self.lpf.ps.random
         #centers = np.array(self.lpf.ps.centers)
         
         self.min_pv = minimize(self.chi2f,centers_coeffs,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 10000, 'disp': True}).x
+                                   options={'maxiter': 10000, 'maxfev': 10000}).x#, 'disp': True}).x
         
     def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=False,plot_priors=True,sample_ball=False):
         """
@@ -319,22 +338,22 @@ class FitTargetRefStarPolynomial(object):
         https://github.com/hpparvi/PyDE
         """
         centers = np.array(self.chi2f.ps.centers)
-        print("Running PyDE Optimizer")
+        #print("Running PyDE Optimizer")
         self.de = pyde.de.DiffEvol(self.chi2f, self.chi2f.ps.bounds, npop, maximize=False) # we want to maximize the likelihood
         self.min_pv, self.min_pv_chi2val = self.de.optimize(ngen=de_iter)
-        print("Optimized using PyDE")
-        print("Final parameters:")
-        self.print_param_diagnostics(self.min_pv)
+        #print("Optimized using PyDE")
+        #print("Final parameters:")
+        #self.print_param_diagnostics(self.min_pv)
         #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
         #print("LogLn value:",self.min_pv_lnval)
         #print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
         if mcmc:
             print("Running MCMC")
             self.sampler = emcee.EnsembleSampler(npop, self.chi2f.ps.ndim, self.chi2f,threads=threads)
-            print("MCMC iterations=",mc_iter)
+            #print("MCMC iterations=",mc_iter)
             for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
                 print(i,end=" ")
-            print("Finished MCMC")
+            #print("Finished MCMC")
 
 class Chi2FunctionVsiniPolynomial(object):
     def __init__(self,w,f1,e1,f2,e2):
@@ -406,11 +425,11 @@ class FitTargetRefStarVsiniPolynomial(object):
         fig.subplots_adjust(hspace=0.05)
         
     def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        print('Performing first Chebfit')
+        #print('Performing first Chebfit')
         #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         
-        print('Found centers:',centers_coeffs)
+        #print('Found centers:',centers_coeffs)
         
         # ####################################################
         # CHANGING 20190629
@@ -418,13 +437,13 @@ class FitTargetRefStarVsiniPolynomial(object):
         #centers = [0.5]+list(centers_coeffs)
         # ####################################################
         
-        print('With CHI',self.chi2f(centers))
-        print(len(centers),len(centers_coeffs))
+        #print('With CHI',self.chi2f(centers))
+        #print(len(centers),len(centers_coeffs))
         #random = self.lpf.ps.random
         #centers = np.array(self.lpf.ps.centers)
         
         self.res = scipy.optimize.minimize(self.chi2f,centers,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 5000, 'disp': True})
+                                   options={'maxiter': 10000, 'maxfev': 5000})#, 'disp': True})
         
         self.min_pv = self.res.x
         
@@ -437,22 +456,22 @@ class FitTargetRefStarVsiniPolynomial(object):
         https://github.com/hpparvi/PyDE
         """
         centers = np.array(self.chi2f.ps.centers)
-        print("Running PyDE Optimizer")
+        #print("Running PyDE Optimizer")
         self.de = pyde.de.DiffEvol(self.chi2f, self.chi2f.ps.bounds, npop, maximize=False) # we want to maximize the likelihood
         self.min_pv, self.min_pv_chi2val = self.de.optimize(ngen=de_iter)
-        print("Optimized using PyDE")
-        print("Final parameters:")
-        self.print_param_diagnostics(self.min_pv)
+        #print("Optimized using PyDE")
+        #print("Final parameters:")
+        #self.print_param_diagnostics(self.min_pv)
         #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
         #print("LogLn value:",self.min_pv_lnval)
         #print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
         if mcmc:
             print("Running MCMC")
             self.sampler = emcee.EnsembleSampler(npop, self.chi2f.ps.ndim, self.chi2f,threads=threads)
-            print("MCMC iterations=",mc_iter)
+            #print("MCMC iterations=",mc_iter)
             for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
                 print(i,end=" ")
-            print("Finished MCMC")
+            #print("Finished MCMC")
 
 class Chi2FunctionPolynomial(object):
     def __init__(self,w,f1,e1,f2,e2):
@@ -497,6 +516,20 @@ class Chi2FunctionPolynomial(object):
     
 def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     """
+    INPUT:
+        ww - wavelength grid to interpolate on (array)
+        H1 - target spectrum (HPFSpectrum object)
+        H2 - reference spectrum (HPFSpectrum object)
+        rv1 - radial velocity H1 km/s (float)
+        rv2 - radial velocity H2 km/s (float)
+        plot - (boolean)
+        verbose - print additional info (boolean)
+
+    OUTPUT:
+        chi2 - chi2 values for the comparison
+        vsini - 
+        coeffs - 
+        
     EXAMPLE:
         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
@@ -504,23 +537,8 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         wmin = 10280.
         wmax = 10380.
         ww = np.arange(wmin,wmax,0.01)
-        chi2spectra(ww,H1,H2,rv1=14.51,plot=True)
+        chi2spectraPolyVsini(ww,H1,H2,rv1=14.51,plot=True)
         
-    EXAMPLE loop through chi2 rv space:
-        wmin = 10280.
-        wmax = 10380.
-        ww = np.arange(wmin,wmax,0.01)
-
-        H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-        H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-        chis = []
-        rvs = np.linspace(14,15,200)
-
-        for i, rv in enumerate(rvs):
-            chi = chi2spectra(ww,H1,H2,rv1=rv,plot=False)
-            chis.append(chi)
-            print(i,rv,chi)
     """
     ff1, ee1 = H1.resample_order(ww)
     ff2, ee2 = H2.resample_order(ww)
@@ -539,6 +557,22 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
 
 def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     """
+    
+    Calculate chi2 - target and reference star
+    
+    INPUT:
+        ww - wavelength grid to interpolate on (array)
+        H1 - target spectrum (HPFSpectrum object)
+        H2 - reference spectrum (HPFSpectrum object)
+        rv1 - radial velocity H1 km/s (float)
+        rv2 - radial velocity H2 km/s (float)
+        plot - H1 vs H2 flux v wavelength plot (boolean)
+        verbose - print additional info (boolean)
+
+    OUTPUT:
+        chi2 - chi2 values for the comparison
+        pp - polynomial coefficients, highest power first
+    
     EXAMPLE:
         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
@@ -546,23 +580,8 @@ def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         wmin = 10280.
         wmax = 10380.
         ww = np.arange(wmin,wmax,0.01)
-        chi2spectra(ww,H1,H2,rv1=14.51,plot=True)
+        chi2spectraPoly(ww,H1,H2,rv1=14.51,plot=True)
         
-    EXAMPLE loop through chi2 rv space:
-        wmin = 10280.
-        wmax = 10380.
-        ww = np.arange(wmin,wmax,0.01)
-
-        H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-        H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-        chis = []
-        rvs = np.linspace(14,15,200)
-
-        for i, rv in enumerate(rvs):
-            chi = chi2spectra(ww,H1,H2,rv1=rv,plot=False)
-            chis.append(chi)
-            print(i,rv,chi)
     """
     ff1, ee1 = H1.resample_order(ww)
     ff2, ee2 = H2.resample_order(ww)
@@ -595,17 +614,23 @@ def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
 
 def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vsini=True):
     """
-    Calculate chi square for 
+    Calculate chi square - target and list of reference spectra
     
     INPUT:
+        ww - wavelength grid to interpolate on (array)
+        H1 - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        plot_all - creates many additional plots (boolean)
+        plot_chi = plot chi2 H1 vs other stars (boolean)
+        verbose - print additional info (boolean)
     
     OUTPUT:
-        chis - chi2 values for the comparison. Sorted by Hrefs
-        df[0:5] - dataframe with 5 best chi2 and 
-        Hrefs
+        df - dataframe of all reference stars sorted by chi2 (chi2, poly_params, and vsini values)
+        df_best - dataframe with 5 best reference stars (chi2, poly_params, and vsini values)
+        Hrefs_best - 5 best fitting reference stars
         
     EXAMPLE:
-        H
+        
     """
     chis = []
     poly_params = []
@@ -644,19 +669,42 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vs
     return df, df_best, Hrefs_best
 
 def weighted_value(values,weights):
+    """
+    Array of weighted values
+    """
     return np.dot(values,weights)
 
 def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/'):
-    print('##################')
+    """
+    Second chi2 loop, creates composite spectrum 
+    
+    INPUT:
+        Htarget - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        ww - wavelength grid to interpolate on (array)
+        v - velocities in km/s to use for absolute RV consideration (array)
+        df_library - dataframe with info on Teff/FeH/logg for the library stars
+        df_target - dataframe with target parameter info
+        plot - save SpecMatch plots (boolean)
+        savefolder - output directory name (String)
+    
+    OUTPUT:
+        stellar parameters teff, feh, logg, vsini, and their errors
+#        df_chi_total, LCS  
+    
+    EXAMPLE:
+        
+    """
+    #print('##################')
     print('Saving results to {}'.format(savefolder))
-    print('##################')
+    #print('##################')
     utils.make_dir(savefolder)
     targetname = Htarget.object
     ##############################
     
-    print('##################')
-    print('Running Chi2 loop')
-    print('##################')
+    #print('##################')
+    #print('Running Chi2 loop')
+    #print('##################')
     # STEP 1: Chi2 Loop
     df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True,vsini=True)
     # Combine best data
@@ -692,9 +740,9 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
         logg_known = np.nan
         loggerr_known = np.nan
         
-    print('##################')
-    print('Performing Linear Combination Optimization')
-    print('##################')
+    #print('##################')
+    #print('Performing Linear Combination Optimization')
+    #print('##################')
 
     ##############################
     # STEP 2 LINEAR COMBINATION
@@ -737,11 +785,11 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     pickle.dump(results,savefile)
     savefile.close()
     #astropylib.gkastro.pickle_dump(savefolder+targetname+'_results.pkl',results)
-    print('Saved results to {}'.format(savefolder+targetname+'_results.pkl'))
+    #print('Saved results to {}'.format(savefolder+targetname+'_results.pkl'))
     
-    print('##################')
-    print('Saving Chi2 dataframe to {}'.format(savefolder+targetname+'_chi2results.csv'))
-    print('##################')
+    #print('##################')
+    #print('Saving Chi2 dataframe to {}'.format(savefolder+targetname+'_chi2results.csv'))
+    #print('##################')
     df_chi_total.to_csv(savefolder+targetname+'_chi2results.csv',index=False)
     df_chi_best_total['weights'] = weights
     df_chi_best_total.to_csv(savefolder+targetname+'_chi2results_best.csv',index=False)
@@ -749,8 +797,19 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
 
 def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig=None,title=''):
     """
-    Plot a nice 3panel chi2 vs Teff, FeH, logg
-        
+    3panel plot chi2 vs Teff, FeH, logg for 5 best fit stars among all library stars
+    
+    INPUT:
+        chis - (array)
+        teff - (array)
+        feh - (array)
+        logg - (array)
+        savename - directory name to save plot (str)
+        title - plot title (str)
+
+    OUTPUT:
+        saves 3panel plot
+            
     EXAMPLE:
         plot_chi_teff_feh_logg_panel(df_chi.chi2,df_chi.Teff,df_chi['[Fe/H]'],df_chi['log(g)'],
         savename='/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/chi2.pdf')
@@ -790,6 +849,21 @@ def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig
     
 def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_logg=None,fig=None,ax=None,bx=None,
                                   savename='corr_panel.pdf',scale_factor_for_points=200.):
+    """
+    Plot of teff vs feh, logg for 5 best fit stars among all library stars
+    
+    INPUT:
+        teff - (array)
+        feh - (array)
+        logg - (array)
+        chis - (array)
+        savename - directory name to save plot (str)
+        title - plot title (str)
+
+    OUTPUT:
+        saves correlation plot
+        
+    """
     if ax is None and bx is None and fig is None:
         fig, (ax,bx) = plt.subplots(ncols=2,dpi=200,sharey=True,figsize=(10,3))
 

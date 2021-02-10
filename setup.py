@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='hpfspecmatch',
-      version='0.1.0',
+      version='0.1.1',
       description='Matching HPF Spectra',
       long_description=readme(),
       url='https://github.com/gummiks/hpfspecmatch/',
