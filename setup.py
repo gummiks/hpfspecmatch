@@ -16,5 +16,5 @@ setup(name='hpfspecmatch',
       license='GPLv3',
       classifiers=['Topic :: Scientific/Engineering :: Astronomy'],
       keywords='HPF Spectra Astronomy',
-      include_package_data=True
+      include_package_data=True,zip_safe=False
       )
