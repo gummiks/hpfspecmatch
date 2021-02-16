@@ -16,15 +16,35 @@ from hpfspec import utils
 import matplotlib.pyplot as plt
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
+from .config import BOUNDS
 #from hpfspec.spec_help import vacuum_to_air
 
 def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
     """
     Get data ready for MCMC
     
+    INPUT:
+        H1 - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        w - wavelength grid to interpolate on (array)
+        v - velocities in km/s to use for absolute RV consideration (array)
+#        polyvals - polynomial coefficients (array)
+#        vsinis - vsini values km/s (array)
+        plot - (boolean)
+
+    OUTPUT:
+        f1 - spectrum
+        e1 - spectrum flux error
+        ffrefs - spectra  (array)
+        eerefs - spectra flux errors (array)
+       
     EXAMPLE:
+#        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
+#       files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
+#       summarize_values_from_orders(files,'AD_Leo')
         
     """
+    
     H1.deblaze()
     _, rabs = H1.rvabs_for_orders(v,orders=[5],plot=plot)
     H1.redshift(rv=np.median(rabs))
@@ -108,8 +128,8 @@ class FitLinCombSpec(object):
         self.loggerr_known = loggerr_known
         
     def calculate_stellar_parameters(self,weights):
-        print('Weights',weights)
-        print('Teffs',self.teffs)
+        #print('Weights',weights)
+        #print('Teffs',self.teffs)
         if self.teffs != []:
             self.teff = weighted_value(self.teffs,weights)
         else: 
@@ -297,19 +317,19 @@ class FitTargetRefStarPolynomial(object):
         fig.subplots_adjust(hspace=0.05)
         
     def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        print('Performing first Chebfit')
+        #print('Performing first Chebfit')
         #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         
-        print('Found centers:',centers_coeffs)
-        print('With CHI',self.chi2f(centers_coeffs))
+        #print('Found centers:',centers_coeffs)
+        #print('With CHI',self.chi2f(centers_coeffs))
         #centers = [1.]#+list(centers_coeffs)
         #print(len(centers),len(centers_coeffs))
         #random = self.lpf.ps.random
         #centers = np.array(self.lpf.ps.centers)
         
         self.min_pv = minimize(self.chi2f,centers_coeffs,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 10000, 'disp': True}).x
+                                   options={'maxiter': 10000, 'maxfev': 10000}).x#, 'disp': True}).x
         
     def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=False,plot_priors=True,sample_ball=False):
         """
@@ -406,11 +426,11 @@ class FitTargetRefStarVsiniPolynomial(object):
         fig.subplots_adjust(hspace=0.05)
         
     def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        print('Performing first Chebfit')
+        #print('Performing first Chebfit')
         #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
         
-        print('Found centers:',centers_coeffs)
+        #print('Found centers:',centers_coeffs)
         
         # ####################################################
         # CHANGING 20190629
@@ -418,13 +438,13 @@ class FitTargetRefStarVsiniPolynomial(object):
         #centers = [0.5]+list(centers_coeffs)
         # ####################################################
         
-        print('With CHI',self.chi2f(centers))
-        print(len(centers),len(centers_coeffs))
+        #print('With CHI',self.chi2f(centers))
+        #print(len(centers),len(centers_coeffs))
         #random = self.lpf.ps.random
         #centers = np.array(self.lpf.ps.centers)
         
         self.res = scipy.optimize.minimize(self.chi2f,centers,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 5000, 'disp': True})
+                                   options={'maxiter': 10000, 'maxfev': 5000})#, 'disp': True})
         
         self.min_pv = self.res.x
         
@@ -454,49 +474,63 @@ class FitTargetRefStarVsiniPolynomial(object):
                 print(i,end=" ")
             print("Finished MCMC")
 
-class Chi2FunctionPolynomial(object):
-    def __init__(self,w,f1,e1,f2,e2):
-        self.w = w
-        self.data_target = {'f': f1,
-                            'e': e1}
-        self.data_ref    = {'f': f2,
-                            'e': e2}
-        self.priors = [#UP( 0.     , 15.   , 'vsini', '$v \sin i$',priortype="model")]
-                       UP( -1e10  , 1e10  , 'c0'   , 'c_0'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c1'   , 'c_1'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c2'   , 'c_2'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c3'   , 'c_3'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c4'   , 'c_4'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c5'   , 'c_5'       ,priortype="model")]
-        self.ps     = PriorSet(self.priors)
+# class Chi2FunctionPolynomial(object):
+#     def __init__(self,w,f1,e1,f2,e2):
+#         self.w = w
+#         self.data_target = {'f': f1,
+#                             'e': e1}
+#         self.data_ref    = {'f': f2,
+#                             'e': e2}
+#         self.priors = [#UP( 0.     , 15.   , 'vsini', '$v \sin i$',priortype="model")]
+#                        UP( -1e10  , 1e10  , 'c0'   , 'c_0'       ,priortype="model"),
+#                        UP( -1e10  , 1e10  , 'c1'   , 'c_1'       ,priortype="model"),
+#                        UP( -1e10  , 1e10  , 'c2'   , 'c_2'       ,priortype="model"),
+#                        UP( -1e10  , 1e10  , 'c3'   , 'c_3'       ,priortype="model"),
+#                        UP( -1e10  , 1e10  , 'c4'   , 'c_4'       ,priortype="model"),
+#                        UP( -1e10  , 1e10  , 'c5'   , 'c_5'       ,priortype="model")]
+#         self.ps     = PriorSet(self.priors)
         
-    def compute_model(self,pv,eps=0.6):
-        """
-        Multiply reference by polynomial and then rotationally broaden.
-        """
-        #vsini = pv[0]
-        coeffs = pv[1:]
-        coeffs = pv[0:]
-        #p = np.polynomial.chebyshev.chebfit(FTRSVP.chi2f.w,FTRSVP.chi2f.data_target['f']-FTRSVP.chi2f.data_ref['f']+1.,5)
-        #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
-        ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
-        ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-        #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
-        return ff_ref
+#     def compute_model(self,pv,eps=0.6):
+#         """
+#         Multiply reference by polynomial and then rotationally broaden.
+#         """
+#         #vsini = pv[0]
+#         coeffs = pv[1:]
+#         coeffs = pv[0:]
+#         #p = np.polynomial.chebyshev.chebfit(FTRSVP.chi2f.w,FTRSVP.chi2f.data_target['f']-FTRSVP.chi2f.data_ref['f']+1.,5)
+#         #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
+#         ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
+#         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
+#         #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
+#         return ff_ref
         
-    def __call__(self,pv,verbose=False):
-        if any(pv < self.ps.pmins) or any(pv>self.ps.pmaxs):
-            return np.inf        
-        flux_model = self.compute_model(pv)
-        flux_target = self.data_target['f']
-        dummy_error = np.ones(len(flux_target))
-        chi2 = stats_help.chi2(flux_target-flux_model,dummy_error,verbose=verbose)
-        print(pv,chi2)
-        #log_of_priors = self.ps.c_log_prior(pv)
-        return chi2
+#     def __call__(self,pv,verbose=False):
+#         if any(pv < self.ps.pmins) or any(pv>self.ps.pmaxs):
+#             return np.inf        
+#         flux_model = self.compute_model(pv)
+#         flux_target = self.data_target['f']
+#         dummy_error = np.ones(len(flux_target))
+#         chi2 = stats_help.chi2(flux_target-flux_model,dummy_error,verbose=verbose)
+#         print(pv,chi2)
+#         #log_of_priors = self.ps.c_log_prior(pv)
+#         return chi2
     
 def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     """
+    INPUT:
+        ww - wavelength grid to interpolate on (array)
+        H1 - target spectrum (HPFSpectrum object)
+        H2 - reference spectrum (HPFSpectrum object)
+        rv1 - radial velocity H1 km/s (float)
+        rv2 - radial velocity H2 km/s (float)
+        plot - (boolean)
+        verbose - print additional info (boolean)
+
+    OUTPUT:
+        chi2 - chi2 values for the comparison
+        vsini - 
+        coeffs - 
+        
     EXAMPLE:
         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
@@ -504,23 +538,8 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         wmin = 10280.
         wmax = 10380.
         ww = np.arange(wmin,wmax,0.01)
-        chi2spectra(ww,H1,H2,rv1=14.51,plot=True)
+        chi2spectraPolyVsini(ww,H1,H2,rv1=14.51,plot=True)
         
-    EXAMPLE loop through chi2 rv space:
-        wmin = 10280.
-        wmax = 10380.
-        ww = np.arange(wmin,wmax,0.01)
-
-        H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-        H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-        chis = []
-        rvs = np.linspace(14,15,200)
-
-        for i, rv in enumerate(rvs):
-            chi = chi2spectra(ww,H1,H2,rv1=rv,plot=False)
-            chis.append(chi)
-            print(i,rv,chi)
     """
     ff1, ee1 = H1.resample_order(ww)
     ff2, ee2 = H2.resample_order(ww)
@@ -537,86 +556,96 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         
     return chi2, vsini, coeffs
 
-def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
-    """
-    EXAMPLE:
-        H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-        H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-        wmin = 10280.
-        wmax = 10380.
-        ww = np.arange(wmin,wmax,0.01)
-        chi2spectra(ww,H1,H2,rv1=14.51,plot=True)
-        
-    EXAMPLE loop through chi2 rv space:
-        wmin = 10280.
-        wmax = 10380.
-        ww = np.arange(wmin,wmax,0.01)
-
-        H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-        H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-        chis = []
-        rvs = np.linspace(14,15,200)
-
-        for i, rv in enumerate(rvs):
-            chi = chi2spectra(ww,H1,H2,rv1=rv,plot=False)
-            chis.append(chi)
-            print(i,rv,chi)
-    """
-    ff1, ee1 = H1.resample_order(ww)
-    ff2, ee2 = H2.resample_order(ww)
+# def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
+#     """
     
-    # Multiply reference by a polynomial
-    pp = np.polyfit(ww,ff1-ff2+1.,5)
-    ff2 = ff2*np.polyval(pp,ww)
-    #print('setting polyval to:',H2.poly_vals)
-    #H2.poly_vals = pp
-    #print(H2.poly_vals)
-    chi2 = stats_help.chi2(ff1-ff2,np.ones(len(ff2)),verbose=verbose)
+#     Calculate chi2 - target and reference star
     
-    if plot:
-        fig, (ax,bx) = plt.subplots(dpi=200,nrows=2,sharex=True,gridspec_kw={'height_ratios':[4,2]})
-        if rv1 is None: rv1 = H1.rv
-        if rv2 is None: rv2 = H2.rv
-        ax.plot(ww,ff1,lw=1,color='black',label="{}, rv={:0.2f}km/s".format(H1.object,rv1))
-        ax.plot(ww,ff2,lw=1,color='crimson',label="{}, rv={:0.2f}km/s".format(H2.object,rv2))
-        ax.plot(ww,np.polyval(pp,ww),lw=1,color='crimson',label="polynomial")
-        bx.errorbar(ww,ff1-ff2,ee1+ee2,elinewidth=1,marker='o',markersize=2,lw=0.,color='crimson')
-        fig.subplots_adjust(hspace=0.05)
-        [utils.ax_apply_settings(xx,ticksize=10) for xx in (ax,bx)]
-        bx.set_xlabel('Wavelength [A]')
-        ax.set_ylabel('Flux')
-        bx.set_ylabel('Residuals')
-        ax.set_title('{} vs {}: $\chi^2=${:0.3f}'.format(H1.object,H2.object,chi2))
-        ax.legend(loc='upper right',fontsize=8,bbox_to_anchor=(1.4,1.))
+#     INPUT:
+#         ww - wavelength grid to interpolate on (array)
+#         H1 - target spectrum (HPFSpectrum object)
+#         H2 - reference spectrum (HPFSpectrum object)
+#         rv1 - radial velocity H1 km/s (float)
+#         rv2 - radial velocity H2 km/s (float)
+#         plot - H1 vs H2 flux v wavelength plot (boolean)
+#         verbose - print additional info (boolean)
+
+#     OUTPUT:
+#         chi2 - chi2 values for the comparison
+#         pp - polynomial coefficients, highest power first
+    
+#     EXAMPLE:
+#         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
+#         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
+
+#         wmin = 10280.
+#         wmax = 10380.
+#         ww = np.arange(wmin,wmax,0.01)
+#         chi2spectraPoly(ww,H1,H2,rv1=14.51,plot=True)
         
-    return chi2, pp
+#     """
+#     ff1, ee1 = H1.resample_order(ww)
+#     ff2, ee2 = H2.resample_order(ww)
+    
+#     # Multiply reference by a polynomial
+#     pp = np.polyfit(ww,ff1-ff2+1.,5)
+#     ff2 = ff2*np.polyval(pp,ww)
+#     #print('setting polyval to:',H2.poly_vals)
+#     #H2.poly_vals = pp
+#     #print(H2.poly_vals)
+#     chi2 = stats_help.chi2(ff1-ff2,np.ones(len(ff2)),verbose=verbose)
+    
+#     if plot:
+#         fig, (ax,bx) = plt.subplots(dpi=200,nrows=2,sharex=True,gridspec_kw={'height_ratios':[4,2]})
+#         if rv1 is None: rv1 = H1.rv
+#         if rv2 is None: rv2 = H2.rv
+#         ax.plot(ww,ff1,lw=1,color='black',label="{}, rv={:0.2f}km/s".format(H1.object,rv1))
+#         ax.plot(ww,ff2,lw=1,color='crimson',label="{}, rv={:0.2f}km/s".format(H2.object,rv2))
+#         ax.plot(ww,np.polyval(pp,ww),lw=1,color='crimson',label="polynomial")
+#         bx.errorbar(ww,ff1-ff2,ee1+ee2,elinewidth=1,marker='o',markersize=2,lw=0.,color='crimson')
+#         fig.subplots_adjust(hspace=0.05)
+#         [utils.ax_apply_settings(xx,ticksize=10) for xx in (ax,bx)]
+#         bx.set_xlabel('Wavelength [A]')
+#         ax.set_ylabel('Flux')
+#         bx.set_ylabel('Residuals')
+#         ax.set_title('{} vs {}: $\chi^2=${:0.3f}'.format(H1.object,H2.object,chi2))
+#         ax.legend(loc='upper right',fontsize=8,bbox_to_anchor=(1.4,1.))
+        
+#     return chi2, pp
 
 def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vsini=True):
     """
-    Calculate chi square for 
+    Calculate chi square - target and list of reference spectra
     
     INPUT:
+        ww - wavelength grid to interpolate on (array)
+        H1 - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        plot_all - creates many additional plots (boolean)
+        plot_chi = plot chi2 H1 vs other stars (boolean)
+        verbose - print additional info (boolean)
     
     OUTPUT:
-        chis - chi2 values for the comparison. Sorted by Hrefs
-        df[0:5] - dataframe with 5 best chi2 and 
-        Hrefs
+        df - dataframe of all reference stars sorted by chi2 (chi2, poly_params, and vsini values)
+        df_best - dataframe with 5 best reference stars (chi2, poly_params, and vsini values)
+        Hrefs_best - 5 best fitting reference stars
         
     EXAMPLE:
-        H
+        
     """
     chis = []
     poly_params = []
     vsinis = []
     for i, H2 in enumerate(Hrefs):
+        if i == 0:#SEJ
+            print('First step: Matching target star to all library stars')
+            print("##################")
         if vsini:
             chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
         else:
             chi, p  = chi2spectraPoly(ww,H1,H2,plot=plot_all)
             vsini = np.nan
-        if verbose: print(i,H1.object,H2.object,chi)
+        if verbose: print('{}, Target = {:15s} Library Star = {:15s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
         chis.append(chi)
         poly_params.append(p)
         vsinis.append(vsini)
@@ -626,7 +655,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vs
     df = df.sort_values('chi2')
     df = df.reset_index(drop=False)
     df_best = df[0:5]
-    Hrefs_best = hpfspec.HPFSpecList(np.array(Hrefs)[df_best['index'].values])
+    Hrefs_best = hpfspec.HPFSpecList(np.array(Hrefs)[df_best['index'].values]);#SEJ
     
     if plot_chi:
         fig, ax = plt.subplots(dpi=200)
@@ -644,9 +673,32 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vs
     return df, df_best, Hrefs_best
 
 def weighted_value(values,weights):
+    """
+    Array of weighted values
+    """
     return np.dot(values,weights)
 
 def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/'):
+    """
+    Second chi2 loop, creates composite spectrum 
+    
+    INPUT:
+        Htarget - target spectrum (HPFSpectrum object)
+        Hrefs - reference spectra (HPFSpectraList object)
+        ww - wavelength grid to interpolate on (array)
+        v - velocities in km/s to use for absolute RV consideration (array)
+        df_library - dataframe with info on Teff/FeH/logg for the library stars
+        df_target - dataframe with target parameter info
+        plot - save SpecMatch plots (boolean)
+        savefolder - output directory name (String)
+    
+    OUTPUT:
+        stellar parameters teff, feh, logg, vsini, and their errors
+#        df_chi_total, LCS  
+    
+    EXAMPLE:
+        
+    """
     print('##################')
     print('Saving results to {}'.format(savefolder))
     print('##################')
@@ -713,7 +765,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
                          loggerr_known=loggerr_known)
     LCS.minimize_PyDE(mcmc=False)
     print(LCS.min_pv)
-    LCS.plot_model(LCS.min_pv)
+    #LCS.plot_model(LCS.min_pv)# SEJ
     if plot:
         LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,
                                        savename=savefolder+targetname+'_compositecomparison.png')
@@ -749,8 +801,19 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
 
 def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig=None,title=''):
     """
-    Plot a nice 3panel chi2 vs Teff, FeH, logg
-        
+    3panel plot chi2 vs Teff, FeH, logg for 5 best fit stars among all library stars
+    
+    INPUT:
+        chis - (array)
+        teff - (array)
+        feh - (array)
+        logg - (array)
+        savename - directory name to save plot (str)
+        title - plot title (str)
+
+    OUTPUT:
+        saves 3panel plot
+            
     EXAMPLE:
         plot_chi_teff_feh_logg_panel(df_chi.chi2,df_chi.Teff,df_chi['[Fe/H]'],df_chi['log(g)'],
         savename='/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/chi2.pdf')
@@ -790,6 +853,21 @@ def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig
     
 def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_logg=None,fig=None,ax=None,bx=None,
                                   savename='corr_panel.pdf',scale_factor_for_points=200.):
+    """
+    Plot of teff vs feh, logg for 5 best fit stars among all library stars
+    
+    INPUT:
+        teff - (array)
+        feh - (array)
+        logg - (array)
+        chis - (array)
+        savename - directory name to save plot (str)
+        title - plot title (str)
+
+    OUTPUT:
+        saves correlation plot
+        
+    """
     if ax is None and bx is None and fig is None:
         fig, (ax,bx) = plt.subplots(ncols=2,dpi=200,sharey=True,figsize=(10,3))
 
@@ -874,3 +952,71 @@ def summarize_values_from_orders(files_pkl,targetname):
     print('Saved to {}'.format(savefolder+os.sep+target+'_overview.csv'))
     print('Saved to {}'.format(savefolder+os.sep+target+'_med.csv'))
     return df, df_med
+
+def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirectory, orders = ['4', '5', '6', '14', '15', '16', '17']):
+    """
+    run hpfspecmatch for a given target file and orders
+    
+    INPUT:
+        targetfile - name of target file
+        targetname - target name, queried via simbad or tic ('GJ_251' or TIC 68581262)
+        HLS - refence stars as an HPFSpecList object
+        df_lib - dataframe with info on Teff/FeH/logg for the library stars
+        outputdirectory - folder to save overall results and plots
+        orders - hpf orders to run (orders 4, 5, 6, 14, 15, 16, and 17
+                    recommended as they are the cleanest orders with minimal tellurics)
+    
+    OUTPUT:
+        result files will be saved to outputdirectory
+    
+    EXAMPLE:
+        filename = '../input/20201020_hpf_gto_targets/Slope-20200114T091114_R01.optimal.fits'
+        targetname = 'GJ_251'
+        HLS = hpfspec.HPFSpecList(filelist=library_fitsfiles)
+        outputdir = '20201020_hpf_gto_targets/GJ_251'
+        run_specmatch_for_orders(filename, targetname , HLS, outputdir)
+    
+    NOTES:
+        targetname will be queried via simbad or tic which saves a configuration file to target config directory
+    
+    """
+    # Target data
+    Htarget = hpfspec.HPFSpectrum(targetfile,targetname = targetname)
+
+    # Which orders are good in HPF ?
+    orders = list(BOUNDS.keys())
+    
+    # Reference data
+    Hrefs   = HLS.splist
+    # Run spectral matching algorithm for first two orders
+    # in principle we should run all orders, just first two as an example
+    for o in orders:
+        print("##################")
+        print("Order {}".format(o))
+        print("##################")
+        #print(BOUNDS[o])
+        wmin = BOUNDS[o][0] # Lower wavelength bound in A
+        wmax = BOUNDS[o][1] # Upper wavelength bound in A
+        ww = np.arange(wmin,wmax,0.01)   # Wavelength array to resample to
+        v = np.linspace(-125,125,1501)   # Velocities in km/s to use for absolute RV consideration
+        savefolder = '../output/{}/{}_{}/'.format(outputdirectory,Htarget.object,o) # foldername to save
+
+        #############################################################
+        # Run first Spectral Matching Step: Loop through the full library to find which ones are best
+        #############################################################
+        df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,            # Wavelength to resample to
+                                                         Htarget,       # Target class
+                                                         HLS.splist,    # Target library spectra
+                                                         plot_all=False,# if True, will create a lot more plots 
+                                                         verbose=True,  # if verbose
+                                                         vsini=True)    # recommend always having on
+
+        #############################################################
+        # Run the Second step: creating the composite spectrum
+        #############################################################
+        t,f,l,vis,te,fe,le,df_chi,LCS = run_specmatch(Htarget,   # Target class
+                                                      HLS.splist,# Library spectra
+                                                      ww,        # Wavelength to resample to
+                                                      v,         # velocity range to use for absolute rv
+                                                      df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
+                                                      savefolder=savefolder)
