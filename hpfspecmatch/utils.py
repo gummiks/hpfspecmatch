@@ -12,21 +12,72 @@ import wget, zipfile, shutil
 norm_mean     = lambda x: x/np.nanmean(x)
 
 def pickle_dump(filename,obj):
+    """
+    write obj to to filename and save
+    
+    INPUT:
+        filename - name to save pickle file (str)
+        obj - object to write to file
+    
+    OUTPUT:
+        obj saved as pickle file
+        
+    EXAMPLE:
+        pickle_dump()
+    
+    """
     savefile = open(filename,"w")
     pickle.dump(obj, savefile)
     savefile.close()
     print("Saved to {}".format(filename))
 
 def pickle_load(filename,python3=True):
+    """
+    load obj from filename
+    
+    INPUT:
+        filename - name of saved pickle file (str)
+        obj - object to write to file
+    
+    OUTPUT:
+        load obj from pickle file
+        
+    EXAMPLE:
+        pickle_load()
+    """
     if python3:
         openfile = open(filename,"rb")
     return pickle.load(openfile,encoding='latin1')
 
 
 def jd2datetime(times):
+    """
+    convert jd to iso utc date/time
+    
+    INPUT:
+        times in jd (array)
+    
+    OUTPUT:
+        date/time in utc (array)
+        
+    EXAMPLE:
+        
+    """
     return np.array([astropy.time.Time(time,format="jd",scale="utc").datetime for time in times])
 
 def iso2jd(times):
+    """
+    convert iso utc to jd date/time
+    
+    INPUT:
+        date/time in iso uts (array)
+    
+    OUTPUT:
+        date/time in jd (array)
+        
+    EXAMPLE:
+        
+    """
     return np.array([astropy.time.Time(time,format="iso",scale="utc").jd for time in times])
 
 def make_dir(dirname,verbose=True):
