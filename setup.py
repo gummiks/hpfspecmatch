@@ -16,5 +16,6 @@ setup(name='hpfspecmatch',
       license='GPLv3',
       classifiers=['Topic :: Scientific/Engineering :: Astronomy'],
       keywords='HPF Spectra Astronomy',
+      dependency_links=['http://github.com/user/repo/tarball/master#egg=package-1.0']
       include_package_data=True,zip_safe=False
       )
