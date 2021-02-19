@@ -500,7 +500,7 @@ def find_str_in_list(l,string):
             return element
     return ''
 
-def get_library(url = 'https://www.dropbox.com/s/8fcraxmpgqdq9w9/20200128_specmatch_nir.zip?dl=1', outputdir='../library/20200128_specmatch_nir'):
+def get_library(url = 'https://www.dropbox.com/s/69j00zrpov48qwx/20201008_specmatch_nir.zip?dl=1', outputdir='../library/20201008_specmatch_nir'):
     """
     Download stellar library if it does not already exist
     
@@ -512,24 +512,23 @@ def get_library(url = 'https://www.dropbox.com/s/8fcraxmpgqdq9w9/20200128_specma
         saves downloaded zip file to outputdir folder
         
     EXAMPLE:
-        get_library()
+        hpfspecmatch.utils.get_library()
     
     """
     if not os.path.isdir('../library/{}'.format(outputdir)):
         
         print('Downloading library from: {}'.format(url))
-        wget.download(url, '../library/20200128_specmatch_nir.zip')
+        wget.download(url, '../library/20201008_specmatch_nir.zip')
         
         print('Extracting zip file')
-        with zipfile.ZipFile('../library/20200128_specmatch_nir.zip', 'r') as zip_ref:
+        with zipfile.ZipFile('../library/20201008_specmatch_nir.zip', 'r') as zip_ref:
             zip_ref.extractall('../library/')  
         print('Extracting zip file complete')
         print('Deleting zip file')
-        os.remove('../library/20200128_specmatch_nir.zip')
+        os.remove('../library/20201008_specmatch_nir.zip')
         shutil.rmtree('../library/__MACOSX')
         
         print('Download complete')
         
     else:
-        
         print('Library already exists. Skipping download')
