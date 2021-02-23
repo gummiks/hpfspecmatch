@@ -9,6 +9,7 @@ import pandas as pd
 import radvel
 from astroquery.simbad import Simbad
 import wget, zipfile, shutil
+from . import config
 norm_mean     = lambda x: x/np.nanmean(x)
 
 def pickle_dump(filename,obj):
@@ -99,9 +100,7 @@ def make_dir(dirname,verbose=True):
         os.makedirs(dirname)
         if verbose==True: print("Created folder:",dirname)
     except OSError:
-        if verbose==True: print(dirname,"already exists. Skipping")
-
-
+        if verbose==True: print(dirname,"already exists.")
 
 def vac2air(wavelength,P,T,input_in_angstroms=True):
     """
@@ -525,35 +524,35 @@ def find_str_in_list(l,string):
             return element
     return ''
 
-def get_library(url = 'https://www.dropbox.com/s/69j00zrpov48qwx/20201008_specmatch_nir.zip?dl=1', outputdir='../library/20201008_specmatch_nir'):
+def get_library(overwrite=False):
     """
     Download stellar library if it does not already exist
-    
+
     INPUT:
-        url - url of library file to download
-        outputdir - library save directory
+        overwrite - if True, try redownloading and overwriting current library
     
     OUTPUT:
         saves downloaded zip file to outputdir folder
         
     EXAMPLE:
         hpfspecmatch.utils.get_library()
-    
     """
-    if not os.path.isdir('../library/{}'.format(outputdir)):
+
+    if ((os.path.isdir(config.PATH_LIBRARY) is False) and (overwrite is False)) or (overwrite is True):
+        make_dir(config.PATH_LIBRARY)
         
-        print('Downloading library from: {}'.format(url))
-        wget.download(url, '../library/20201008_specmatch_nir.zip')
+        print('Downloading library from: {}'.format(config.URL_LIBRARY))
+        wget.download(config.URL_LIBRARY, config.PATH_LIBRARY_ZIPNAME)
         
         print('Extracting zip file')
-        with zipfile.ZipFile('../library/20201008_specmatch_nir.zip', 'r') as zip_ref:
-            zip_ref.extractall('../library/')  
+        with zipfile.ZipFile(config.PATH_LIBRARY_ZIPNAME, 'r') as zip_ref:
+            zip_ref.extractall(config.PATH_LIBRARY)  
         print('Extracting zip file complete')
         print('Deleting zip file')
-        os.remove('../library/20201008_specmatch_nir.zip')
-        shutil.rmtree('../library/__MACOSX')
-        
+        os.remove(config.PATH_LIBRARY_ZIPNAME)
+        #shutil.rmtree('../library/__MACOSX')
         print('Download complete')
         
     else:
         print('Library already exists. Skipping download')
+        print('Library path is: {}'.format(config.PATH_LIBRARY))

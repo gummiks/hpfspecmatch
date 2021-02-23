@@ -16,8 +16,7 @@ from hpfspec import utils
 import matplotlib.pyplot as plt
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
-from .config import BOUNDS
-#from hpfspec.spec_help import vacuum_to_air
+from . import config
 
 def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
     """
@@ -28,8 +27,8 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
         Hrefs - reference spectra (HPFSpectraList object)
         w - wavelength grid to interpolate on (array)
         v - velocities in km/s to use for absolute RV consideration (array)
-#        polyvals - polynomial coefficients (array)
-#        vsinis - vsini values km/s (array)
+        polyvals - polynomial coefficients (array)
+        vsinis - vsini values km/s (array)
         plot - (boolean)
 
     OUTPUT:
@@ -39,12 +38,10 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
         eerefs - spectra flux errors (array)
        
     EXAMPLE:
-#        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
-#       files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
-#       summarize_values_from_orders(files,'AD_Leo')
-        
+        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
+        files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
+        summarize_values_from_orders(files,'AD_Leo')
     """
-    
     H1.deblaze()
     _, rabs = H1.rvabs_for_orders(v,orders=[5],plot=plot)
     H1.redshift(rv=np.median(rabs))
@@ -178,7 +175,6 @@ class FitLinCombSpec(object):
         """
         fig.savefig('/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/spectra.pdf',dpi=200)
         """
-        #w = vacuum_to_air(self.lpf.w)
         w = self.lpf.w
         pv_all = self.lpf.get_pv_all(pv)
         self.calculate_stellar_parameters(pv_all)
@@ -262,99 +258,6 @@ def sample(df_chain,N=500):
     std = np.std(spectra,axis=0)#np.std(spectra,axis=0)
     return std
 
-def resSpectraVsiniPoly(ww,H1,H2,eps=0.3):
-    """
-    Experimenting with putting vsini. Doesn't really seem it is needed for this library
-    """
-    params = Parameters()
-    params.add('a0', value=0.0)
-    params.add('a1', value=0.0)
-    params.add('a2', value=0.0)
-    #params.add('vsini', value=0.1,min=0.,max=15.)
-    ff1, ee1 = H1.resample_order(ww)
-    ff2, ee2 = H2.resample_order(ww)
-    
-    def residualfunc(params,ff2):
-        a0 = params['a0']
-        a1 = params['a1']
-        a2 = params['a2']
-        #vsini = params['vsini']
-        #print('vsini=',vsini)
-        
-        _ff2 = ff2*np.polyval([a0,a1,a2],ww)
-        #_, _ff2 = astropylib.gkastro.rot_broaden_spectrum(ww,_ff2,eps,vsini,interpolate=False,plot=False)
-        return ff1 - _ff2
-    
-    out = minimize(residualfunc,params,args=(ff2,))
-    return out
-
-class FitTargetRefStarPolynomial(object):
-    """
-    A class to fit 5 lin-comb spectra together. Note: look at LPFunctionLinComb
-    """
-    def __init__(self,Chi2FunctionVsiniPolynomial):
-        self.chi2f = Chi2FunctionVsiniPolynomial
-
-    def plot_model(self,pv):
-        vsini = pv[0]
-        #coeffs = pv[1:]
-        coeffs=[]
-        fig, (ax, bx) = plt.subplots(nrows=2,dpi=200,sharex=True,gridspec_kw={'height_ratios':[5,2]})
-        ax.plot(self.chi2f.w,self.chi2f.data_target['f'],color='black',label='Target',lw=1)
-        ff = self.chi2f.compute_model(pv)
-        ax.plot(self.chi2f.w,np.polynomial.chebyshev.chebval(self.chi2f.w,pv[0:]))
-        
-        ax.plot(self.chi2f.w,ff,color='crimson',label='Reference (vsini={:0.3f}km/s)'.format(vsini),alpha=0.5,lw=1)
-        ax.legend(fontsize=10)
-        bx.plot(self.chi2f.w,self.chi2f.data_target['f']-ff,lw=1)
-        bx.set_xlabel('Wavelength [A]',fontsize=12)
-        bx.set_ylabel('Residual',fontsize=12)
-                
-        title = '$\chi^2$={}, coeffs={}'.format(self.chi2f(pv),coeffs)
-        ax.set_title(title,fontsize=10)
-        for xx in (ax,bx):
-            utils.ax_apply_settings(xx,ticksize=10)
-        fig.subplots_adjust(hspace=0.05)
-        
-    def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        #print('Performing first Chebfit')
-        #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
-        centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
-        
-        #print('Found centers:',centers_coeffs)
-        #print('With CHI',self.chi2f(centers_coeffs))
-        #centers = [1.]#+list(centers_coeffs)
-        #print(len(centers),len(centers_coeffs))
-        #random = self.lpf.ps.random
-        #centers = np.array(self.lpf.ps.centers)
-        
-        self.min_pv = minimize(self.chi2f,centers_coeffs,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 10000}).x#, 'disp': True}).x
-        
-    def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=False,plot_priors=True,sample_ball=False):
-        """
-        Minimize using the PyDE
-        
-        NOTES:
-        https://github.com/hpparvi/PyDE
-        """
-        centers = np.array(self.chi2f.ps.centers)
-        print("Running PyDE Optimizer")
-        self.de = pyde.de.DiffEvol(self.chi2f, self.chi2f.ps.bounds, npop, maximize=False) # we want to maximize the likelihood
-        self.min_pv, self.min_pv_chi2val = self.de.optimize(ngen=de_iter)
-        print("Optimized using PyDE")
-        print("Final parameters:")
-        self.print_param_diagnostics(self.min_pv)
-        #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
-        #print("LogLn value:",self.min_pv_lnval)
-        #print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
-        if mcmc:
-            print("Running MCMC")
-            self.sampler = emcee.EnsembleSampler(npop, self.chi2f.ps.ndim, self.chi2f,threads=threads)
-            print("MCMC iterations=",mc_iter)
-            for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
-                print(i,end=" ")
-            print("Finished MCMC")
 
 class Chi2FunctionVsiniPolynomial(object):
     def __init__(self,w,f1,e1,f2,e2):
@@ -382,7 +285,6 @@ class Chi2FunctionVsiniPolynomial(object):
         #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
         ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-        #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
         #ff_ref = pyasl.fastRotBroad(self.w,ff_ref,eps,vsini)
         ff_ref = rotbroad_help.broaden(self.w,ff_ref,vsini,u1=eps)
         return ff_ref
@@ -474,46 +376,6 @@ class FitTargetRefStarVsiniPolynomial(object):
                 print(i,end=" ")
             print("Finished MCMC")
 
-# class Chi2FunctionPolynomial(object):
-#     def __init__(self,w,f1,e1,f2,e2):
-#         self.w = w
-#         self.data_target = {'f': f1,
-#                             'e': e1}
-#         self.data_ref    = {'f': f2,
-#                             'e': e2}
-#         self.priors = [#UP( 0.     , 15.   , 'vsini', '$v \sin i$',priortype="model")]
-#                        UP( -1e10  , 1e10  , 'c0'   , 'c_0'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c1'   , 'c_1'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c2'   , 'c_2'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c3'   , 'c_3'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c4'   , 'c_4'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c5'   , 'c_5'       ,priortype="model")]
-#         self.ps     = PriorSet(self.priors)
-        
-#     def compute_model(self,pv,eps=0.6):
-#         """
-#         Multiply reference by polynomial and then rotationally broaden.
-#         """
-#         #vsini = pv[0]
-#         coeffs = pv[1:]
-#         coeffs = pv[0:]
-#         #p = np.polynomial.chebyshev.chebfit(FTRSVP.chi2f.w,FTRSVP.chi2f.data_target['f']-FTRSVP.chi2f.data_ref['f']+1.,5)
-#         #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
-#         ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
-#         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-#         #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
-#         return ff_ref
-        
-#     def __call__(self,pv,verbose=False):
-#         if any(pv < self.ps.pmins) or any(pv>self.ps.pmaxs):
-#             return np.inf        
-#         flux_model = self.compute_model(pv)
-#         flux_target = self.data_target['f']
-#         dummy_error = np.ones(len(flux_target))
-#         chi2 = stats_help.chi2(flux_target-flux_model,dummy_error,verbose=verbose)
-#         print(pv,chi2)
-#         #log_of_priors = self.ps.c_log_prior(pv)
-#         return chi2
     
 def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     """
@@ -556,64 +418,8 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         
     return chi2, vsini, coeffs
 
-# def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
-#     """
-    
-#     Calculate chi2 - target and reference star
-    
-#     INPUT:
-#         ww - wavelength grid to interpolate on (array)
-#         H1 - target spectrum (HPFSpectrum object)
-#         H2 - reference spectrum (HPFSpectrum object)
-#         rv1 - radial velocity H1 km/s (float)
-#         rv2 - radial velocity H2 km/s (float)
-#         plot - H1 vs H2 flux v wavelength plot (boolean)
-#         verbose - print additional info (boolean)
 
-#     OUTPUT:
-#         chi2 - chi2 values for the comparison
-#         pp - polynomial coefficients, highest power first
-    
-#     EXAMPLE:
-#         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-#         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-#         wmin = 10280.
-#         wmax = 10380.
-#         ww = np.arange(wmin,wmax,0.01)
-#         chi2spectraPoly(ww,H1,H2,rv1=14.51,plot=True)
-        
-#     """
-#     ff1, ee1 = H1.resample_order(ww)
-#     ff2, ee2 = H2.resample_order(ww)
-    
-#     # Multiply reference by a polynomial
-#     pp = np.polyfit(ww,ff1-ff2+1.,5)
-#     ff2 = ff2*np.polyval(pp,ww)
-#     #print('setting polyval to:',H2.poly_vals)
-#     #H2.poly_vals = pp
-#     #print(H2.poly_vals)
-#     chi2 = stats_help.chi2(ff1-ff2,np.ones(len(ff2)),verbose=verbose)
-    
-#     if plot:
-#         fig, (ax,bx) = plt.subplots(dpi=200,nrows=2,sharex=True,gridspec_kw={'height_ratios':[4,2]})
-#         if rv1 is None: rv1 = H1.rv
-#         if rv2 is None: rv2 = H2.rv
-#         ax.plot(ww,ff1,lw=1,color='black',label="{}, rv={:0.2f}km/s".format(H1.object,rv1))
-#         ax.plot(ww,ff2,lw=1,color='crimson',label="{}, rv={:0.2f}km/s".format(H2.object,rv2))
-#         ax.plot(ww,np.polyval(pp,ww),lw=1,color='crimson',label="polynomial")
-#         bx.errorbar(ww,ff1-ff2,ee1+ee2,elinewidth=1,marker='o',markersize=2,lw=0.,color='crimson')
-#         fig.subplots_adjust(hspace=0.05)
-#         [utils.ax_apply_settings(xx,ticksize=10) for xx in (ax,bx)]
-#         bx.set_xlabel('Wavelength [A]')
-#         ax.set_ylabel('Flux')
-#         bx.set_ylabel('Residuals')
-#         ax.set_title('{} vs {}: $\chi^2=${:0.3f}'.format(H1.object,H2.object,chi2))
-#         ax.legend(loc='upper right',fontsize=8,bbox_to_anchor=(1.4,1.))
-        
-#     return chi2, pp
-
-def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vsini=True):
+def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True):
     """
     Calculate chi square - target and list of reference spectra
     
@@ -640,11 +446,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vs
         if i == 0:#SEJ
             print('First step: Matching target star to all library stars')
             print("##################")
-        if vsini:
-            chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
-        else:
-            chi, p  = chi2spectraPoly(ww,H1,H2,plot=plot_all)
-            vsini = np.nan
+        chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
         if verbose: print('{}, Target = {:15s} Library Star = {:15s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
         chis.append(chi)
         poly_params.append(p)
@@ -709,8 +511,10 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     print('##################')
     print('Running Chi2 loop')
     print('##################')
+    ##############################
     # STEP 1: Chi2 Loop
-    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True,vsini=True)
+    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True)
+    ##############################
     # Combine best data
     df_chi_best_total = pd.merge(df_chi_best,df_library,on='OBJECT_ID')
     df_chi_total = pd.merge(df_chi,df_library,on='OBJECT_ID')
@@ -750,6 +554,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
 
     ##############################
     # STEP 2 LINEAR COMBINATION
+    ##############################
     f1, e1, ffrefs, eerefs  = get_data_ready(Htarget,Hbest,ww,v,polyvals=df_chi_best.poly_params.values,
                                              vsinis=df_chi_best.vsini.values)
     L = LPFunctionLinComb(ww,f1,e1,ffrefs,eerefs)
@@ -788,7 +593,6 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     savefile = open(savefolder+targetname+'_results.pkl',"wb")
     pickle.dump(results,savefile)
     savefile.close()
-    #astropylib.gkastro.pickle_dump(savefolder+targetname+'_results.pkl',results)
     print('Saved results to {}'.format(savefolder+targetname+'_results.pkl'))
     
     print('##################')
@@ -953,16 +757,18 @@ def summarize_values_from_orders(files_pkl,targetname):
     print('Saved to {}'.format(savefolder+os.sep+target+'_med.csv'))
     return df, df_med
 
-def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirectory, orders = ['4', '5', '6', '14', '15', '16', '17']):
+def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_results', HLS=None, 
+                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4', '5', '6', '14', '15', '16', '17']):
     """
     run hpfspecmatch for a given target file and orders
     
     INPUT:
         targetfile - name of target file
         targetname - target name, queried via simbad or tic ('GJ_251' or TIC 68581262)
-        HLS - refence stars as an HPFSpecList object
-        df_lib - dataframe with info on Teff/FeH/logg for the library stars
         outputdirectory - folder to save overall results and plots
+        HLS - refence stars as an HPFSpecList object, defaults to normal library
+        path_df_lib - path to .csv file containing info on Teff/FeH/logg for all library stars
+                    - defaults to config.PATH_LIBRARY_DB
         orders - hpf orders to run (orders 4, 5, 6, 14, 15, 16, and 17
                     recommended as they are the cleanest orders with minimal tellurics)
     
@@ -974,7 +780,7 @@ def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirector
         targetname = 'GJ_251'
         HLS = hpfspec.HPFSpecList(filelist=library_fitsfiles)
         outputdir = '20201020_hpf_gto_targets/GJ_251'
-        run_specmatch_for_orders(filename, targetname , HLS, outputdir)
+        run_specmatch_for_orders(filename, targetname , outputdir, HLS)
     
     NOTES:
         targetname will be queried via simbad or tic which saves a configuration file to target config directory
@@ -983,36 +789,29 @@ def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirector
     # Target data
     Htarget = hpfspec.HPFSpectrum(targetfile,targetname = targetname)
 
-    # Which orders are good in HPF ?
-    orders = list(BOUNDS.keys())
+    print('Reading Library DataBase from: {}'.format(path_df_lib))
+    df_lib = pd.read_csv(path_df_lib)
     
     # Reference data
-    Hrefs   = HLS.splist
+    if HLS is None:
+        print('No HLS supplied, defaulting to default library')
+        HLS = hpfspec.HPFSpecList(filelist=config.LIBRARY_FITSFILES)
+        Hrefs   = HLS.splist
+
     # Run spectral matching algorithm for first two orders
     # in principle we should run all orders, just first two as an example
     for o in orders:
         print("##################")
         print("Order {}".format(o))
         print("##################")
-        #print(BOUNDS[o])
-        wmin = BOUNDS[o][0] # Lower wavelength bound in A
-        wmax = BOUNDS[o][1] # Upper wavelength bound in A
+        wmin = config.BOUNDS[o][0] # Lower wavelength bound in A
+        wmax = config.BOUNDS[o][1] # Upper wavelength bound in A
         ww = np.arange(wmin,wmax,0.01)   # Wavelength array to resample to
         v = np.linspace(-125,125,1501)   # Velocities in km/s to use for absolute RV consideration
         savefolder = '../output/{}/{}_{}/'.format(outputdirectory,Htarget.object,o) # foldername to save
 
         #############################################################
-        # Run first Spectral Matching Step: Loop through the full library to find which ones are best
-        #############################################################
-        df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,            # Wavelength to resample to
-                                                         Htarget,       # Target class
-                                                         HLS.splist,    # Target library spectra
-                                                         plot_all=False,# if True, will create a lot more plots 
-                                                         verbose=True,  # if verbose
-                                                         vsini=True)    # recommend always having on
-
-        #############################################################
-        # Run the Second step: creating the composite spectrum
+        # Run specmatch for order 
         #############################################################
         t,f,l,vis,te,fe,le,df_chi,LCS = run_specmatch(Htarget,   # Target class
                                                       HLS.splist,# Library spectra
@@ -1104,3 +903,4 @@ def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results =
         
     
     return df_crossval
+
