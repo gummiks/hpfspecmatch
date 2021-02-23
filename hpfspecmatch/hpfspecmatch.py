@@ -16,7 +16,7 @@ from hpfspec import utils
 import matplotlib.pyplot as plt
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
-from .config import BOUNDS
+from . import config
 #from hpfspec.spec_help import vacuum_to_air
 
 def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
@@ -709,8 +709,10 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     print('##################')
     print('Running Chi2 loop')
     print('##################')
+    ##############################
     # STEP 1: Chi2 Loop
     df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True,vsini=True)
+    ##############################
     # Combine best data
     df_chi_best_total = pd.merge(df_chi_best,df_library,on='OBJECT_ID')
     df_chi_total = pd.merge(df_chi,df_library,on='OBJECT_ID')
@@ -750,6 +752,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
 
     ##############################
     # STEP 2 LINEAR COMBINATION
+    ##############################
     f1, e1, ffrefs, eerefs  = get_data_ready(Htarget,Hbest,ww,v,polyvals=df_chi_best.poly_params.values,
                                              vsinis=df_chi_best.vsini.values)
     L = LPFunctionLinComb(ww,f1,e1,ffrefs,eerefs)
@@ -953,16 +956,18 @@ def summarize_values_from_orders(files_pkl,targetname):
     print('Saved to {}'.format(savefolder+os.sep+target+'_med.csv'))
     return df, df_med
 
-def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirectory, orders = ['4', '5', '6', '14', '15', '16', '17']):
+def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_results', HLS=None, 
+                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4', '5', '6', '14', '15', '16', '17']):
     """
     run hpfspecmatch for a given target file and orders
     
     INPUT:
         targetfile - name of target file
         targetname - target name, queried via simbad or tic ('GJ_251' or TIC 68581262)
-        HLS - refence stars as an HPFSpecList object
-        df_lib - dataframe with info on Teff/FeH/logg for the library stars
         outputdirectory - folder to save overall results and plots
+        HLS - refence stars as an HPFSpecList object, defaults to normal library
+        path_df_lib - path to .csv file containing info on Teff/FeH/logg for all library stars
+                    - defaults to config.PATH_LIBRARY_DB
         orders - hpf orders to run (orders 4, 5, 6, 14, 15, 16, and 17
                     recommended as they are the cleanest orders with minimal tellurics)
     
@@ -974,7 +979,7 @@ def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirector
         targetname = 'GJ_251'
         HLS = hpfspec.HPFSpecList(filelist=library_fitsfiles)
         outputdir = '20201020_hpf_gto_targets/GJ_251'
-        run_specmatch_for_orders(filename, targetname , HLS, outputdir)
+        run_specmatch_for_orders(filename, targetname , outputdir, HLS)
     
     NOTES:
         targetname will be queried via simbad or tic which saves a configuration file to target config directory
@@ -983,36 +988,29 @@ def run_specmatch_for_orders(targetfile, targetname, HLS, df_lib, outputdirector
     # Target data
     Htarget = hpfspec.HPFSpectrum(targetfile,targetname = targetname)
 
-    # Which orders are good in HPF ?
-    orders = list(BOUNDS.keys())
+    print('Reading Library DataBase from: {}'.format(path_df_lib))
+    df_lib = pd.read_csv(path_df_lib)
     
     # Reference data
-    Hrefs   = HLS.splist
+    if HLS is None:
+        print('No HLS supplied, defaulting to default library')
+        HLS = hpfspec.HPFSpecList(filelist=config.LIBRARY_FITSFILES)
+        Hrefs   = HLS.splist
+
     # Run spectral matching algorithm for first two orders
     # in principle we should run all orders, just first two as an example
     for o in orders:
         print("##################")
         print("Order {}".format(o))
         print("##################")
-        #print(BOUNDS[o])
-        wmin = BOUNDS[o][0] # Lower wavelength bound in A
-        wmax = BOUNDS[o][1] # Upper wavelength bound in A
+        wmin = config.BOUNDS[o][0] # Lower wavelength bound in A
+        wmax = config.BOUNDS[o][1] # Upper wavelength bound in A
         ww = np.arange(wmin,wmax,0.01)   # Wavelength array to resample to
         v = np.linspace(-125,125,1501)   # Velocities in km/s to use for absolute RV consideration
         savefolder = '../output/{}/{}_{}/'.format(outputdirectory,Htarget.object,o) # foldername to save
 
         #############################################################
-        # Run first Spectral Matching Step: Loop through the full library to find which ones are best
-        #############################################################
-        df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,            # Wavelength to resample to
-                                                         Htarget,       # Target class
-                                                         HLS.splist,    # Target library spectra
-                                                         plot_all=False,# if True, will create a lot more plots 
-                                                         verbose=True,  # if verbose
-                                                         vsini=True)    # recommend always having on
-
-        #############################################################
-        # Run the Second step: creating the composite spectrum
+        # Run specmatch for order 
         #############################################################
         t,f,l,vis,te,fe,le,df_chi,LCS = run_specmatch(Htarget,   # Target class
                                                       HLS.splist,# Library spectra
