@@ -41,9 +41,7 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
         "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
         files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
         summarize_values_from_orders(files,'AD_Leo')
-        
     """
-    
     H1.deblaze()
     _, rabs = H1.rvabs_for_orders(v,orders=[5],plot=plot)
     H1.redshift(rv=np.median(rabs))
@@ -280,79 +278,11 @@ def resSpectraVsiniPoly(ww,H1,H2,eps=0.3):
         #print('vsini=',vsini)
         
         _ff2 = ff2*np.polyval([a0,a1,a2],ww)
-        #_, _ff2 = astropylib.gkastro.rot_broaden_spectrum(ww,_ff2,eps,vsini,interpolate=False,plot=False)
         return ff1 - _ff2
     
     out = minimize(residualfunc,params,args=(ff2,))
     return out
 
-class FitTargetRefStarPolynomial(object):
-    """
-    A class to fit 5 lin-comb spectra together. Note: look at LPFunctionLinComb
-    """
-    def __init__(self,Chi2FunctionVsiniPolynomial):
-        self.chi2f = Chi2FunctionVsiniPolynomial
-
-    def plot_model(self,pv):
-        vsini = pv[0]
-        #coeffs = pv[1:]
-        coeffs=[]
-        fig, (ax, bx) = plt.subplots(nrows=2,dpi=200,sharex=True,gridspec_kw={'height_ratios':[5,2]})
-        ax.plot(self.chi2f.w,self.chi2f.data_target['f'],color='black',label='Target',lw=1)
-        ff = self.chi2f.compute_model(pv)
-        ax.plot(self.chi2f.w,np.polynomial.chebyshev.chebval(self.chi2f.w,pv[0:]))
-        
-        ax.plot(self.chi2f.w,ff,color='crimson',label='Reference (vsini={:0.3f}km/s)'.format(vsini),alpha=0.5,lw=1)
-        ax.legend(fontsize=10)
-        bx.plot(self.chi2f.w,self.chi2f.data_target['f']-ff,lw=1)
-        bx.set_xlabel('Wavelength [A]',fontsize=12)
-        bx.set_ylabel('Residual',fontsize=12)
-                
-        title = '$\chi^2$={}, coeffs={}'.format(self.chi2f(pv),coeffs)
-        ax.set_title(title,fontsize=10)
-        for xx in (ax,bx):
-            utils.ax_apply_settings(xx,ticksize=10)
-        fig.subplots_adjust(hspace=0.05)
-        
-    def minimize_AMOEBA(self,centers = [0.01,0.,0.,0.,0.,0.,1.]):
-        #print('Performing first Chebfit')
-        #centers_coeffs = np.poly(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
-        centers_coeffs = np.polynomial.chebyshev.chebfit(self.chi2f.w,self.chi2f.data_target['f']-self.chi2f.data_ref['f']+1.,5)
-        
-        #print('Found centers:',centers_coeffs)
-        #print('With CHI',self.chi2f(centers_coeffs))
-        #centers = [1.]#+list(centers_coeffs)
-        #print(len(centers),len(centers_coeffs))
-        #random = self.lpf.ps.random
-        #centers = np.array(self.lpf.ps.centers)
-        
-        self.min_pv = minimize(self.chi2f,centers_coeffs,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 10000}).x#, 'disp': True}).x
-        
-    def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=False,plot_priors=True,sample_ball=False):
-        """
-        Minimize using the PyDE
-        
-        NOTES:
-        https://github.com/hpparvi/PyDE
-        """
-        centers = np.array(self.chi2f.ps.centers)
-        print("Running PyDE Optimizer")
-        self.de = pyde.de.DiffEvol(self.chi2f, self.chi2f.ps.bounds, npop, maximize=False) # we want to maximize the likelihood
-        self.min_pv, self.min_pv_chi2val = self.de.optimize(ngen=de_iter)
-        print("Optimized using PyDE")
-        print("Final parameters:")
-        self.print_param_diagnostics(self.min_pv)
-        #self.lpf.ps.plot_all(figsize=(6,4),pv=self.min_pv)
-        #print("LogLn value:",self.min_pv_lnval)
-        #print("Log priors",self.lpf.ps.c_log_prior(self.min_pv))
-        if mcmc:
-            print("Running MCMC")
-            self.sampler = emcee.EnsembleSampler(npop, self.chi2f.ps.ndim, self.chi2f,threads=threads)
-            print("MCMC iterations=",mc_iter)
-            for i,c in enumerate(self.sampler.sample(self.de.population,iterations=mc_iter)):
-                print(i,end=" ")
-            print("Finished MCMC")
 
 class Chi2FunctionVsiniPolynomial(object):
     def __init__(self,w,f1,e1,f2,e2):
@@ -380,7 +310,6 @@ class Chi2FunctionVsiniPolynomial(object):
         #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
         ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-        #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
         #ff_ref = pyasl.fastRotBroad(self.w,ff_ref,eps,vsini)
         ff_ref = rotbroad_help.broaden(self.w,ff_ref,vsini,u1=eps)
         return ff_ref
@@ -689,7 +618,6 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     savefile = open(savefolder+targetname+'_results.pkl',"wb")
     pickle.dump(results,savefile)
     savefile.close()
-    #astropylib.gkastro.pickle_dump(savefolder+targetname+'_results.pkl',results)
     print('Saved results to {}'.format(savefolder+targetname+'_results.pkl'))
     
     print('##################')
