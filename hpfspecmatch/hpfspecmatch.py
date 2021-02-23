@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
 from . import config
-#from hpfspec.spec_help import vacuum_to_air
 
 def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
     """
@@ -28,8 +27,8 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
         Hrefs - reference spectra (HPFSpectraList object)
         w - wavelength grid to interpolate on (array)
         v - velocities in km/s to use for absolute RV consideration (array)
-#        polyvals - polynomial coefficients (array)
-#        vsinis - vsini values km/s (array)
+        polyvals - polynomial coefficients (array)
+        vsinis - vsini values km/s (array)
         plot - (boolean)
 
     OUTPUT:
@@ -39,9 +38,9 @@ def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
         eerefs - spectra flux errors (array)
        
     EXAMPLE:
-#        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
-#       files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
-#       summarize_values_from_orders(files,'AD_Leo')
+        "Target={}, rv={:0.3f}km/s, rvmed={:0.3f}km/s".format(H1.target.name,H1.rv,np.median(rabs))
+        files = sorted(glob.glob('20200209_ad_leos/AD_Leo/*/*.pkl'))
+        summarize_values_from_orders(files,'AD_Leo')
         
     """
     
@@ -178,7 +177,6 @@ class FitLinCombSpec(object):
         """
         fig.savefig('/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/spectra.pdf',dpi=200)
         """
-        #w = vacuum_to_air(self.lpf.w)
         w = self.lpf.w
         pv_all = self.lpf.get_pv_all(pv)
         self.calculate_stellar_parameters(pv_all)
