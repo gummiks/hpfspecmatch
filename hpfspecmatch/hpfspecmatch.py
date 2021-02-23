@@ -258,30 +258,6 @@ def sample(df_chain,N=500):
     std = np.std(spectra,axis=0)#np.std(spectra,axis=0)
     return std
 
-def resSpectraVsiniPoly(ww,H1,H2,eps=0.3):
-    """
-    Experimenting with putting vsini. Doesn't really seem it is needed for this library
-    """
-    params = Parameters()
-    params.add('a0', value=0.0)
-    params.add('a1', value=0.0)
-    params.add('a2', value=0.0)
-    #params.add('vsini', value=0.1,min=0.,max=15.)
-    ff1, ee1 = H1.resample_order(ww)
-    ff2, ee2 = H2.resample_order(ww)
-    
-    def residualfunc(params,ff2):
-        a0 = params['a0']
-        a1 = params['a1']
-        a2 = params['a2']
-        #vsini = params['vsini']
-        #print('vsini=',vsini)
-        
-        _ff2 = ff2*np.polyval([a0,a1,a2],ww)
-        return ff1 - _ff2
-    
-    out = minimize(residualfunc,params,args=(ff2,))
-    return out
 
 
 class Chi2FunctionVsiniPolynomial(object):
