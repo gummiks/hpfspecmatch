@@ -474,46 +474,6 @@ class FitTargetRefStarVsiniPolynomial(object):
                 print(i,end=" ")
             print("Finished MCMC")
 
-# class Chi2FunctionPolynomial(object):
-#     def __init__(self,w,f1,e1,f2,e2):
-#         self.w = w
-#         self.data_target = {'f': f1,
-#                             'e': e1}
-#         self.data_ref    = {'f': f2,
-#                             'e': e2}
-#         self.priors = [#UP( 0.     , 15.   , 'vsini', '$v \sin i$',priortype="model")]
-#                        UP( -1e10  , 1e10  , 'c0'   , 'c_0'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c1'   , 'c_1'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c2'   , 'c_2'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c3'   , 'c_3'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c4'   , 'c_4'       ,priortype="model"),
-#                        UP( -1e10  , 1e10  , 'c5'   , 'c_5'       ,priortype="model")]
-#         self.ps     = PriorSet(self.priors)
-        
-#     def compute_model(self,pv,eps=0.6):
-#         """
-#         Multiply reference by polynomial and then rotationally broaden.
-#         """
-#         #vsini = pv[0]
-#         coeffs = pv[1:]
-#         coeffs = pv[0:]
-#         #p = np.polynomial.chebyshev.chebfit(FTRSVP.chi2f.w,FTRSVP.chi2f.data_target['f']-FTRSVP.chi2f.data_ref['f']+1.,5)
-#         #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
-#         ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
-#         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-#         #_, ff_ref = astropylib.gkastro.rot_broaden_spectrum(self.w,ff_ref,eps,vsini,interpolate=False,plot=False)
-#         return ff_ref
-        
-#     def __call__(self,pv,verbose=False):
-#         if any(pv < self.ps.pmins) or any(pv>self.ps.pmaxs):
-#             return np.inf        
-#         flux_model = self.compute_model(pv)
-#         flux_target = self.data_target['f']
-#         dummy_error = np.ones(len(flux_target))
-#         chi2 = stats_help.chi2(flux_target-flux_model,dummy_error,verbose=verbose)
-#         print(pv,chi2)
-#         #log_of_priors = self.ps.c_log_prior(pv)
-#         return chi2
     
 def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     """
@@ -556,64 +516,8 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
         
     return chi2, vsini, coeffs
 
-# def chi2spectraPoly(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
-#     """
-    
-#     Calculate chi2 - target and reference star
-    
-#     INPUT:
-#         ww - wavelength grid to interpolate on (array)
-#         H1 - target spectrum (HPFSpectrum object)
-#         H2 - reference spectrum (HPFSpectrum object)
-#         rv1 - radial velocity H1 km/s (float)
-#         rv2 - radial velocity H2 km/s (float)
-#         plot - H1 vs H2 flux v wavelength plot (boolean)
-#         verbose - print additional info (boolean)
 
-#     OUTPUT:
-#         chi2 - chi2 values for the comparison
-#         pp - polynomial coefficients, highest power first
-    
-#     EXAMPLE:
-#         H1 = HPFSpectrum(df[df.name=='G_9-40'].filename.values[0])
-#         H2 = HPFSpectrum(df[df.name=='AD_Leo'].filename.values[0])
-
-#         wmin = 10280.
-#         wmax = 10380.
-#         ww = np.arange(wmin,wmax,0.01)
-#         chi2spectraPoly(ww,H1,H2,rv1=14.51,plot=True)
-        
-#     """
-#     ff1, ee1 = H1.resample_order(ww)
-#     ff2, ee2 = H2.resample_order(ww)
-    
-#     # Multiply reference by a polynomial
-#     pp = np.polyfit(ww,ff1-ff2+1.,5)
-#     ff2 = ff2*np.polyval(pp,ww)
-#     #print('setting polyval to:',H2.poly_vals)
-#     #H2.poly_vals = pp
-#     #print(H2.poly_vals)
-#     chi2 = stats_help.chi2(ff1-ff2,np.ones(len(ff2)),verbose=verbose)
-    
-#     if plot:
-#         fig, (ax,bx) = plt.subplots(dpi=200,nrows=2,sharex=True,gridspec_kw={'height_ratios':[4,2]})
-#         if rv1 is None: rv1 = H1.rv
-#         if rv2 is None: rv2 = H2.rv
-#         ax.plot(ww,ff1,lw=1,color='black',label="{}, rv={:0.2f}km/s".format(H1.object,rv1))
-#         ax.plot(ww,ff2,lw=1,color='crimson',label="{}, rv={:0.2f}km/s".format(H2.object,rv2))
-#         ax.plot(ww,np.polyval(pp,ww),lw=1,color='crimson',label="polynomial")
-#         bx.errorbar(ww,ff1-ff2,ee1+ee2,elinewidth=1,marker='o',markersize=2,lw=0.,color='crimson')
-#         fig.subplots_adjust(hspace=0.05)
-#         [utils.ax_apply_settings(xx,ticksize=10) for xx in (ax,bx)]
-#         bx.set_xlabel('Wavelength [A]')
-#         ax.set_ylabel('Flux')
-#         bx.set_ylabel('Residuals')
-#         ax.set_title('{} vs {}: $\chi^2=${:0.3f}'.format(H1.object,H2.object,chi2))
-#         ax.legend(loc='upper right',fontsize=8,bbox_to_anchor=(1.4,1.))
-        
-#     return chi2, pp
-
-def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vsini=True):
+def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True):
     """
     Calculate chi square - target and list of reference spectra
     
@@ -640,11 +544,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,vs
         if i == 0:#SEJ
             print('First step: Matching target star to all library stars')
             print("##################")
-        if vsini:
-            chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
-        else:
-            chi, p  = chi2spectraPoly(ww,H1,H2,plot=plot_all)
-            vsini = np.nan
+        chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
         if verbose: print('{}, Target = {:15s} Library Star = {:15s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
         chis.append(chi)
         poly_params.append(p)
@@ -711,7 +611,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     print('##################')
     ##############################
     # STEP 1: Chi2 Loop
-    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True,vsini=True)
+    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True)
     ##############################
     # Combine best data
     df_chi_best_total = pd.merge(df_chi_best,df_library,on='OBJECT_ID')
@@ -1018,3 +918,6 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                                                       v,         # velocity range to use for absolute rv
                                                       df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
                                                       savefolder=savefolder)
+
+
+
