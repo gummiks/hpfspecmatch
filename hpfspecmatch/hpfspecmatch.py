@@ -259,7 +259,6 @@ def sample(df_chain,N=500):
     return std
 
 
-
 class Chi2FunctionVsiniPolynomial(object):
     def __init__(self,w,f1,e1,f2,e2):
         self.w = w
