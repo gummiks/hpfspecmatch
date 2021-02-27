@@ -823,6 +823,88 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                                                       df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
                                                       savefolder=savefolder,
                                                       maxvsini=maxvsini)
-
-
+        
+def plot_crossvalidation_results_1d(df_crossval,savefolder):
+    """
+    """
+    #save
+    print('plotting 1D crossval')
+    
+def plot_crossvalidation_results_2d(df_crossval,savefolder):
+    """
+    """
+    print('plotting 2D crossval')
+        
+def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results = True):
+    """
+    Run cross validation for a given order
+    
+    Here, cross validation is performed using a "leave one out" approach.
+    We loop through the full stellar library leaving one library star out,
+    where we try and recover the stellar parameters for that spectrum and compare it with the known values
+    
+    INPUT:
+        order - order to run cross validation for (orders 4, 5, 6, 14, 15, 16, and 17
+                    recommended as they are the cleanest orders with minimal tellurics)
+        df_lib - dataframe with info on Teff/FeH/logg for the library stars
+        HLS - refence stars as an HPFSpecList object
+        outputdir - folder to save overall results and plots
+        plot_results - plots figures summarizing the cross validation results
+    
+    OUTPUT:
+        returns df_crossval dataframe with columns 'teff','feh','logg','vsini',
+            'd_teff','d_feh','d_logg' where d_*param* is the difference between the known value
+             and the recovered value from the cross validation
+        df_crossval saved to csv in outputdir
+    
+    EXAMPLE:
+        order = '17' # recommended order
+        
+        LIBRARY_DIR = '../library/20201008_specmatch_nir/'
+        
+        df_lib = pd.read_csv(LIBRARY_DIR+'20201008_specmatch_nir.csv')
+        library_fitsfiles = glob2.glob(LIBRARY_DIR+'FITS/*/*.fits')
+        HLS = hpfspec.HPFSpecList(filelist=library_fitsfiles)
+        
+        outputdir = 'cross_validation_{}'.format(order)
+        
+        run_crossvalidation_for_orders(order, df_lib,HLS, outputdir)
+        
+    
+    NOTES:
+        
+    
+    """
+    wmin = hpfspecmatch.BOUNDS[order][0]
+    wmax = hpfspecmatch.BOUNDS[order][1]
+    ww = np.arange(wmin,wmax,0.01)
+    v = np.linspace(-125,125,1501)
+    res = []
+    # Looping over every star in the library
+    for i in range(len(df_lib)):
+        print(i)
+        # Target data
+        Htarget = HLS.splist[i]
+        df_target = df_lib[df_lib['OBJECT_ID'] == Htarget.object]
+        # Removing the target star from the library
+        Hrefs   = np.delete(np.array(HLS.splist),i)
+        # Run specmatch without the target star in the library
+        _res = hpfspecmatch.run_specmatch(Htarget,Hrefs,ww,v,df_lib,df_target,plot=True,
+                             savefolder='{}/plots/'.format(outputdir))
+        res.append(_res)
+        
+    # Collect all of the results and save
+    df_crossval = pd.DataFrame(res,columns=['teff','feh','logg','vsini','d_teff','d_feh','d_logg','_','__'])
+    df_crossval = df_crossval[['teff','feh','logg','vsini','d_teff','d_feh','d_logg']]
+    
+    result_savename = '{}/crossvalidation_resuls_o{}.csv'.format(outputdir,order)
+    df_crossval.to_csv(result_savename)
+    print('Saved tesult to: {}'.format(result_savename))
+    
+    if plot_results == True:
+        plot_crossvalidation_results_1d(df_crossval,savefolder)
+        plot_crossvalidation_results_2d(df_crossval,savefolder)
+        
+    
+    return df_crossval
 

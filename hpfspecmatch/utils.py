@@ -82,6 +82,20 @@ def iso2jd(times):
     return np.array([astropy.time.Time(time,format="iso",scale="utc").jd for time in times])
 
 def make_dir(dirname,verbose=True):
+    """
+    create new directory
+    
+    INPUT:
+        dirname - name of sirectory (str)
+        verbose - include print statements (bool)
+    
+    OUTPUT:
+        creates folder named dirname
+        
+    EXAMPLE:
+        make_dir("folder")
+        
+    """
     try:
         os.makedirs(dirname)
         if verbose==True: print("Created folder:",dirname)
@@ -132,7 +146,18 @@ def n_air(P,T,wavelength):
 
 def get_cmap_colors(cmap='jet',p=None,N=10):
     """
-
+    get colormap instance
+    
+    INPUT:
+        cmap - colormap instance
+        p -
+        N -
+    
+    OUTPUT:
+        
+        
+    EXAMPLE:
+        get_cmap_colors()
     """
     cm = plt.get_cmap(cmap)
     if p is None:
