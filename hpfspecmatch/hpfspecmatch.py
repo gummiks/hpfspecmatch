@@ -197,7 +197,6 @@ class FitLinCombSpec(object):
         ax.text(w[0],0.15,'Residual: Target - Composite (Scale: {:0.0f}x)'.format(scaleres),fontsize=8)
         title += 'Teff={:0.3f}, Fe/H={:0.3f}, logg={:0.3f}, vsini={:0.3f}km/s'.format(self.teff,self.feh,self.logg,self.vsini)
         ax.set_title(title,fontsize=9.5)
-        #fig.suptitle("Main Title", y=0.98)
         
         ax.plot(w,(self.lpf.data_target['f']-ff)*scaleres,color='black',lw=1)
         ax.set_xlabel('Wavelength [A]',fontsize=12,labelpad=2)
