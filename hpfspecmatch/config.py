@@ -10,7 +10,8 @@ BOUNDS = {'4': [8540.,8640.],
           '17': [10460.,10570.]}
 
 # Directory name of package
-DIRNAME = os.path.dirname(os.path.dirname(__file__))
+#DIRNAME = os.path.dirname(os.path.dirname(__file__))
+DIRNAME = '/home/sejones/hpfspecmatch'
 print('DIRNAME: {}'.format(DIRNAME))
 
 # Default library path

@@ -14,6 +14,7 @@ import scipy.optimize
 from hpfspec import rotbroad_help
 from hpfspec import utils
 import matplotlib.pyplot as plt
+import astropy.modeling
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
 from . import config
@@ -192,10 +193,11 @@ class FitLinCombSpec(object):
                 label = '$c_{}$={:0.5f}'.format(i+1,pv_all[i])
             ax.text(w[0],(6.12-i),label,color='black',fontsize=8)
 
-        ax.text(w[0],1.15,'Target Spectrum (Blue), Composite Spectrum (Red)',fontsize=8)
+        ax.text(w[0],1.15,'Target Spectrum (Black), Composite Spectrum (Red)',fontsize=8)
         ax.text(w[0],0.15,'Residual: Target - Composite (Scale: {:0.0f}x)'.format(scaleres),fontsize=8)
         title += 'Teff={:0.3f}, Fe/H={:0.3f}, logg={:0.3f}, vsini={:0.3f}km/s'.format(self.teff,self.feh,self.logg,self.vsini)
-        ax.set_title(title,fontsize=10)
+        ax.set_title(title,fontsize=9.5)
+        #fig.suptitle("Main Title", y=0.98)
         
         ax.plot(w,(self.lpf.data_target['f']-ff)*scaleres,color='black',lw=1)
         ax.set_xlabel('Wavelength [A]',fontsize=12,labelpad=2)
@@ -447,7 +449,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True):
             print('First step: Matching target star to all library stars')
             print("##################")
         chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
-        if verbose: print('{}, Target = {:15s} Library Star = {:15s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
+        if verbose: print('{}, Target = {:15s} Library Star = {:17s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
         chis.append(chi)
         poly_params.append(p)
         vsinis.append(vsini)
@@ -572,7 +574,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     print(LCS.min_pv)
     #LCS.plot_model(LCS.min_pv)# SEJ
     if plot:
-        LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,
+        LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,title = "{}: ".format(targetname),
                                        savename=savefolder+targetname+'_compositecomparison.png')
         
     teff = LCS.teff
@@ -820,16 +822,103 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                                                       df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
                                                       savefolder=savefolder)
         
-def plot_crossvalidation_results_1d(df_crossval,savefolder):
+def plot_crossvalidation_results_1d(order,df_crossval,savefolder):
     """
-    """
-    #save
-    print('plotting 1D crossval')
     
-def plot_crossvalidation_results_2d(df_crossval,savefolder):
+    """
+    print('plotting 1D crossval')
+    fig, (ax,bx,cx) = plt.subplots(nrows=3,sharex=True,dpi=200)
+    x =range(len(df_crossval))
+    label = 'std={:0.2f}K'.format(np.std(df_crossval.d_teff))
+    print(label)
+    ax.plot(df_crossval.d_teff,'k.',markersize=8)
+    ax.set_ylim(ax.get_ylim()[0]*1.6,ax.get_ylim()[1]*2.2)
+
+    label = 'std={:0.2f}dex'.format(np.std(df_crossval.d_feh))
+    print(label)
+    bx.plot(df_crossval.d_feh,'k.',markersize=8)
+    bx.set_ylim(bx.get_ylim()[0]*2.0,bx.get_ylim()[1]*2.2)
+
+    label = 'std={:0.2f}dex'.format(np.std(df_crossval.d_logg))
+    print(label)
+    cx.plot(df_crossval.d_logg,'k.',markersize=8)
+    cx.set_ylim(cx.get_ylim()[0]*2.2,cx.get_ylim()[1]*2.2)
+
+    for xx in (ax,bx,cx):
+        utils.ax_apply_settings(xx)
+        xx.tick_params(labelsize=9,pad=2)
+        xx.grid(lw=0.3)
+        #xx.legend(bbox_to_anchor=(1.,1.),fontsize=12)
+    fig.subplots_adjust(hspace=0.05)
+    ax.set_ylabel('$\Delta$Teff [K]',fontsize=12,labelpad=-4)
+    bx.set_ylabel('$\Delta$Fe/H [K]',fontsize=12,labelpad=-2)
+    cx.set_ylabel('$\Delta$logg [K]',fontsize=12,labelpad=-2)
+    cx.set_xlabel('Library spectrum #',fontsize=12)
+    ax.set_title('Library Performance (HPF Order {})'.format(order))
+    plt.savefig('{}/crossvalidation_o{}_plot1D.png'.format(savefolder,order))
+    
+def plot_crossvalidation_results_2d(order,df_crossval,savefolder):
     """
     """
     print('plotting 2D crossval')
+    dd = df_crossval[["d_teff","d_feh","d_logg"]]
+    fig, axx = plt.subplots(nrows=3,ncols=3,dpi=200,figsize=(6,6))
+
+    for xx in [axx[0,1],axx[0,2],axx[1,2]]:
+        xx.axes.set_axis_off()
+
+    labels = ["$\Delta T_{\mathrm{eff}}$","$\Delta$[Fe/H]","$\Delta \log g$"]
+    xlabels = ["$\Delta T_{\mathrm{eff}}$ [K]","$\Delta$[Fe/H] [dex]","$\Delta \log g$ [dex]"]
+
+    #xlims = [xx.get_xlim() for xx in [axx[1,0],axx[2,0],axx[2,1]]]
+    xlims = []
+    diag = [axx[0,0],axx[1,1],axx[2,2]]
+    for i,xx in enumerate(diag):
+        xx.set_title(labels[i],fontsize=12)
+        _y, _x,_ = xx.hist(dd.iloc[:,i].values,color="black",histtype="step",bins=7,
+                           range=[dd.iloc[:,i].values.min(),dd.iloc[:,i].values.max()])
+        g = astropy.modeling.models.Gaussian1D(stddev=np.std(dd.iloc[:,i].values))
+        xmax = np.max(np.abs(dd.iloc[:,i].values))
+        x = np.linspace(-xmax,xmax,1000)
+        y = (g(x)/(np.max(g(x))))*(np.max(_y))
+        xx.plot(x,y,color="crimson",lw=1,ls="--")
+
+        if i == 0: 
+            xx.xaxis.set_visible(False)
+            xx.yaxis.set_visible(False)    
+            #xx.set_xlim(xlims[0][0],xlims[0][1])
+        if i == 1: 
+            xx.xaxis.set_visible(False)
+            xx.yaxis.set_visible(False)
+            #xx.set_xlim(xlims[2][0],xlims[2][1])
+        if i == 2: 
+            xx.yaxis.set_visible(False)
+        xlims.append(xx.get_xlim())
+
+    axx[1,0].plot(df_crossval.d_teff.values,df_crossval.d_feh.values,marker="o",lw=0,color="k",alpha=0.8)
+    axx[1,0].set_xlim(xlims[0][0],xlims[0][1])
+    axx[2,0].plot(df_crossval.d_teff.values,df_crossval.d_logg.values,marker="o",lw=0,color="k",alpha=0.8)
+    axx[2,0].set_xlim(xlims[0][0],xlims[0][1])
+    axx[2,1].plot(df_crossval.d_feh.values,df_crossval.d_logg.values,marker="o",lw=0,color="k",alpha=0.8)
+    axx[2,1].set_xlim(xlims[1][0],xlims[1][1])
+
+    axx[2,1].yaxis.set_visible(False)
+    axx[1,0].xaxis.set_visible(False)
+
+    axx[1,0].set_ylabel(xlabels[1],fontsize=12,labelpad=3)
+    axx[2,0].set_ylabel(xlabels[2],fontsize=12,labelpad=-2)
+    axx[2,0].set_xlabel(xlabels[0],fontsize=12)
+    axx[2,1].set_xlabel(xlabels[1],fontsize=12)
+    axx[2,2].set_xlabel(xlabels[2],fontsize=12)
+
+    for xx in axx.flatten():
+        utils.ax_apply_settings(xx,ticksize=10)
+        xx.grid(lw=0)
+        xx.tick_params(pad=1)
+
+    fig.subplots_adjust(wspace=0.02,hspace=0.02)
+    plt.savefig('{}/crossvalidation_o{}_plot2D.png'.format(savefolder,order))
+    
         
 def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results = True):
     """
@@ -871,11 +960,12 @@ def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results =
         
     
     """
-    wmin = hpfspecmatch.BOUNDS[order][0]
-    wmax = hpfspecmatch.BOUNDS[order][1]
+    wmin = config.BOUNDS[order][0]
+    wmax = config.BOUNDS[order][1]
     ww = np.arange(wmin,wmax,0.01)
     v = np.linspace(-125,125,1501)
     res = []
+    obj_names = []
     # Looping over every star in the library
     for i in range(len(df_lib)):
         print(i)
@@ -885,21 +975,23 @@ def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results =
         # Removing the target star from the library
         Hrefs   = np.delete(np.array(HLS.splist),i)
         # Run specmatch without the target star in the library
-        _res = hpfspecmatch.run_specmatch(Htarget,Hrefs,ww,v,df_lib,df_target,plot=True,
+        _res = run_specmatch(Htarget,Hrefs,ww,v,df_lib,df_target,plot=True,
                              savefolder='{}/plots/'.format(outputdir))
         res.append(_res)
+        obj_names.append(Htarget.object)
         
     # Collect all of the results and save
     df_crossval = pd.DataFrame(res,columns=['teff','feh','logg','vsini','d_teff','d_feh','d_logg','_','__'])
     df_crossval = df_crossval[['teff','feh','logg','vsini','d_teff','d_feh','d_logg']]
+    df_crossval['targetname'] = obj_names
     
     result_savename = '{}/crossvalidation_resuls_o{}.csv'.format(outputdir,order)
     df_crossval.to_csv(result_savename)
     print('Saved tesult to: {}'.format(result_savename))
     
     if plot_results == True:
-        plot_crossvalidation_results_1d(df_crossval,savefolder)
-        plot_crossvalidation_results_2d(df_crossval,savefolder)
+        plot_crossvalidation_results_1d(order,df_crossval,outputdir)
+        plot_crossvalidation_results_2d(order,df_crossval,outputdir)
         
     
     return df_crossval
