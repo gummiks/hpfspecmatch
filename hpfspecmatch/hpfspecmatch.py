@@ -112,7 +112,7 @@ class FitLinCombSpec(object):
     def __init__(self,LPFunctionLinComb,teffs=[],fehs=[],loggs=[],vsinis=[],
                  teff_known=None,tefferr_known=None,
                  feh_known=None,feherr_known=None,
-                 logg_known=None,loggerr_known=None):
+                 logg_known=None,loggerr_known=None,targetname=''):
         self.lpf = LPFunctionLinComb
         self.teffs = teffs
         self.fehs = fehs
@@ -124,6 +124,7 @@ class FitLinCombSpec(object):
         self.feherr_known = feherr_known
         self.logg_known = logg_known
         self.loggerr_known = loggerr_known
+        self.targetname = targetname
         
     def calculate_stellar_parameters(self,weights):
         #print('Weights',weights)
@@ -174,7 +175,8 @@ class FitLinCombSpec(object):
         
     def plot_model_with_components(self,pv,fig=None,ax=None,names=None,savename='compositeComparison.pdf',title='',scaleres=1.):
         """
-        fig.savefig('/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/spectra.pdf',dpi=200)
+        Make a plot of the 5 best stars and compare to targets spectrum.
+        Compare composite spectrum to target spectrum and plot residuals.
         """
         w = self.lpf.w
         pv_all = self.lpf.get_pv_all(pv)
@@ -189,14 +191,17 @@ class FitLinCombSpec(object):
             ax.plot(w,self.lpf.data_refs['f'][i]+(5.0-i),lw=1,color='black')
             if names is not None:
                 label = '{}, $c_{}$={:0.5f}'.format(names[i].replace('_',' '),i+1,self.lpf.get_pv_all(pv)[i])
+                label+= ', Teff={:0.0f}K'.format(self.teffs[i])
             else:
                 label = '$c_{}$={:0.5f}'.format(i+1,pv_all[i])
+                label+= ', Teff={:0.0f}K'.format(self.teffs[i])
             ax.text(w[0],(6.12-i),label,color='black',fontsize=8)
 
         ax.text(w[0],1.15,'Target Spectrum (Black), Composite Spectrum (Red)',fontsize=8)
         ax.text(w[0],0.15,'Residual: Target - Composite (Scale: {:0.0f}x)'.format(scaleres),fontsize=8)
-        title += 'Teff={:0.3f}, Fe/H={:0.3f}, logg={:0.3f}, vsini={:0.3f}km/s'.format(self.teff,self.feh,self.logg,self.vsini)
-        ax.set_title(title,fontsize=9.5)
+
+        title += 'Target={}, Teff={:0.3f}, Fe/H={:0.3f}, logg={:0.3f}, vsini={:0.3f}km/s'.format(self.targetname,self.teff,self.feh,self.logg,self.vsini)
+        ax.set_title(title,fontsize=10)
         
         ax.plot(w,(self.lpf.data_target['f']-ff)*scaleres,color='black',lw=1)
         ax.set_xlabel('Wavelength [A]',fontsize=12,labelpad=2)
@@ -261,19 +266,19 @@ def sample(df_chain,N=500):
 
 
 class Chi2FunctionVsiniPolynomial(object):
-    def __init__(self,w,f1,e1,f2,e2):
+    def __init__(self,w,f1,e1,f2,e2,maxvsini):
         self.w = w
         self.data_target = {'f': f1,
                             'e': e1}
         self.data_ref    = {'f': f2,
                             'e': e2}
-        self.priors = [UP( 0.     , 20.   , 'vsini', '$v \sin i$',priortype="model"),
-                       UP( -1e10  , 1e10  , 'c0'   , 'c_0'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c1'   , 'c_1'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c2'   , 'c_2'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c3'   , 'c_3'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c4'   , 'c_4'       ,priortype="model"),
-                       UP( -1e10  , 1e10  , 'c5'   , 'c_5'       ,priortype="model")]
+        self.priors = [UP( 0.     , maxvsini    , 'vsini', '$v \sin i$',priortype="model"),
+                       UP( -1e10  , 1e10        , 'c0'   , 'c_0'       ,priortype="model"),
+                       UP( -1e10  , 1e10        , 'c1'   , 'c_1'       ,priortype="model"),
+                       UP( -1e10  , 1e10        , 'c2'   , 'c_2'       ,priortype="model"),
+                       UP( -1e10  , 1e10        , 'c3'   , 'c_3'       ,priortype="model"),
+                       UP( -1e10  , 1e10        , 'c4'   , 'c_4'       ,priortype="model"),
+                       UP( -1e10  , 1e10        , 'c5'   , 'c_5'       ,priortype="model")]
         self.ps     = PriorSet(self.priors)
         
     def compute_model(self,pv,eps=0.3):
@@ -282,11 +287,7 @@ class Chi2FunctionVsiniPolynomial(object):
         """
         vsini = pv[0]
         coeffs = pv[1:]
-        #p = np.polynomial.chebyshev.chebfit(FTRSVP.chi2f.w,FTRSVP.chi2f.data_target['f']-FTRSVP.chi2f.data_ref['f']+1.,5)
-        #_f = np.polynomial.chebyshev.chebval(FTRSVP.chi2f.w,p)
-        ##### ff_ref = self.data_ref['f']*np.polyval(coeffs,self.w)
         ff_ref = self.data_ref['f']*np.polynomial.chebyshev.chebval(self.w,coeffs)
-        #ff_ref = pyasl.fastRotBroad(self.w,ff_ref,eps,vsini)
         ff_ref = rotbroad_help.broaden(self.w,ff_ref,vsini,u1=eps)
         return ff_ref
         
@@ -378,7 +379,7 @@ class FitTargetRefStarVsiniPolynomial(object):
             print("Finished MCMC")
 
     
-def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
+def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False,maxvsini=30.):
     """
     INPUT:
         ww - wavelength grid to interpolate on (array)
@@ -407,7 +408,7 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     ff1, ee1 = H1.resample_order(ww)
     ff2, ee2 = H2.resample_order(ww)
     
-    C = Chi2FunctionVsiniPolynomial(ww,ff1,ee1,ff2, ee2)
+    C = Chi2FunctionVsiniPolynomial(ww,ff1,ee1,ff2, ee2, maxvsini)
     FTRSVP = FitTargetRefStarVsiniPolynomial(C)
     FTRSVP.minimize_AMOEBA()
     vsini = FTRSVP.min_pv[0]
@@ -420,7 +421,7 @@ def chi2spectraPolyVsini(ww,H1,H2,rv1=None,rv2=None,plot=False,verbose=False):
     return chi2, vsini, coeffs
 
 
-def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True):
+def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,maxvsini=30.):
     """
     Calculate chi square - target and list of reference spectra
     
@@ -447,8 +448,9 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True):
         if i == 0:#SEJ
             print('First step: Matching target star to all library stars')
             print("##################")
-        chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all)
-        if verbose: print('{}, Target = {:15s} Library Star = {:17s} chi2 = {:6.3f}'.format(i,H1.object,H2.object,chi))
+
+        chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all,maxvsini=maxvsini)
+        if verbose: print('{:3d}/{:2d}, Target = {:18s} Library Star = {:18s} chi2 = {:6.3f}'.format(i+1,len(Hrefs),H1.object,H2.object,
         chis.append(chi)
         poly_params.append(p)
         vsinis.append(vsini)
@@ -481,7 +483,7 @@ def weighted_value(values,weights):
     """
     return np.dot(values,weights)
 
-def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/'):
+def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/',maxvsini=30.):
     """
     Second chi2 loop, creates composite spectrum 
     
@@ -497,7 +499,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     
     OUTPUT:
         stellar parameters teff, feh, logg, vsini, and their errors
-#        df_chi_total, LCS  
+        df_chi_total, LCS  
     
     EXAMPLE:
         
@@ -514,7 +516,8 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     print('##################')
     ##############################
     # STEP 1: Chi2 Loop
-    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True)
+    df_chi, df_chi_best, Hbest = chi2spectraPolyLoop(ww,Htarget,Hrefs,plot_all=False,verbose=True,
+                                                     maxvsini=maxvsini)
     ##############################
     # Combine best data
     df_chi_best_total = pd.merge(df_chi_best,df_library,on='OBJECT_ID')
@@ -568,12 +571,13 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
                          feh_known=feh_known,
                          feherr_known=feherr_known,
                          logg_known=logg_known,
-                         loggerr_known=loggerr_known)
+                         loggerr_known=loggerr_known,
+                         targetname=targetname)
     LCS.minimize_PyDE(mcmc=False)
     print(LCS.min_pv)
     #LCS.plot_model(LCS.min_pv)# SEJ
     if plot:
-        LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,title = "{}: ".format(targetname),
+        LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,title = "",
                                        savename=savefolder+targetname+'_compositecomparison.png')
         
     teff = LCS.teff
@@ -620,8 +624,7 @@ def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig
         saves 3panel plot
             
     EXAMPLE:
-        plot_chi_teff_feh_logg_panel(df_chi.chi2,df_chi.Teff,df_chi['[Fe/H]'],df_chi['log(g)'],
-        savename='/Users/gks/Dropbox/mypylib/notebooks/GIT/epic_212048748/figures/chi2.pdf')
+        plot_chi_teff_feh_logg_panel(df_chi.chi2,df_chi.Teff,df_chi['[Fe/H]'],df_chi['log(g)'],savename='chi2.pdf')
     """
     if fig is None:
         fig, (ax, bx, cx) = plt.subplots(dpi=200,ncols=3,sharey=True,figsize=(6,2))
@@ -759,7 +762,8 @@ def summarize_values_from_orders(files_pkl,targetname):
     return df, df_med
 
 def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_results', HLS=None, 
-                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4', '5', '6', '14', '15', '16', '17']):
+                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4', '5', '6', '14', '15', '16', '17'],
+                             maxvsini=30.):
     """
     run hpfspecmatch for a given target file and orders
     
@@ -772,6 +776,7 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                     - defaults to config.PATH_LIBRARY_DB
         orders - hpf orders to run (orders 4, 5, 6, 14, 15, 16, and 17
                     recommended as they are the cleanest orders with minimal tellurics)
+        maxvsini - maximum vsini to consider (default = 30 km/s)
     
     OUTPUT:
         result files will be saved to outputdirectory
@@ -809,7 +814,7 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
         wmax = config.BOUNDS[o][1] # Upper wavelength bound in A
         ww = np.arange(wmin,wmax,0.01)   # Wavelength array to resample to
         v = np.linspace(-125,125,1501)   # Velocities in km/s to use for absolute RV consideration
-        savefolder = '../output/{}/{}_{}/'.format(outputdirectory,Htarget.object,o) # foldername to save
+        savefolder = '{}/{}_{}/'.format(outputdirectory,Htarget.object,o) # foldername to save
 
         #############################################################
         # Run specmatch for order 
@@ -819,7 +824,8 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                                                       ww,        # Wavelength to resample to
                                                       v,         # velocity range to use for absolute rv
                                                       df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
-                                                      savefolder=savefolder)
+                                                      savefolder=savefolder,
+                                                      maxvsini=maxvsini)
         
 def plot_crossvalidation_results_1d(order,df_crossval,savefolder):
     """
