@@ -450,7 +450,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,ma
             print("##################")
 
         chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all,maxvsini=maxvsini)
-        if verbose: print('{:3d}/{:2d}, Target = {:18s} Library Star = {:18s} chi2 = {:6.3f}'.format(i+1,len(Hrefs),H1.object,H2.object,
+        if verbose: print('{:3d}/{:2d}, Target = {:18s} Library Star = {:18s} chi2 = {:6.3f}'.format(i+1,len(Hrefs),H1.object,H2.object, chi))
         chis.append(chi)
         poly_params.append(p)
         vsinis.append(vsini)
