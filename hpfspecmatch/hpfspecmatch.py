@@ -925,7 +925,7 @@ def plot_crossvalidation_results_2d(order,df_crossval,savefolder):
     plt.savefig('{}/crossvalidation_o{}_plot2D.png'.format(savefolder,order))
     
         
-def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results = True):
+def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=None, outputdir=config.PATH_LIBRARY_CROSSVAL, plot_results = True):
     """
     Run cross validation for a given order
     
@@ -971,6 +971,14 @@ def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results =
     v = np.linspace(-125,125,1501)
     res = []
     obj_names = []
+    
+    outputdir = '{}/o{}_crossval'.format(outputdir, order)
+    
+    # Reference data
+    if HLS is None:
+        print('No HLS supplied, defaulting to default library')
+        HLS = hpfspec.HPFSpecList(filelist=config.LIBRARY_FITSFILES)
+    
     # Looping over every star in the library
     for i in range(len(df_lib)):
         print(i)
@@ -991,7 +999,7 @@ def run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results =
     df_crossval['targetname'] = obj_names
     
     result_savename = '{}/crossvalidation_resuls_o{}.csv'.format(outputdir,order)
-    df_crossval.to_csv(result_savename)
+    df_crossval.to_csv(result_savename, index=False)
     print('Saved tesult to: {}'.format(result_savename))
     
     if plot_results == True:
