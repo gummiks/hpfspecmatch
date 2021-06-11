@@ -1,5 +1,5 @@
 site_name: HPF-SpecMatch
-repo_url: https://github.com/sejones22/hpfspecmatch
+repo_url: https://github.com/gummiks/hpfspecmatch
 edit_uri: '#root'
 extra_css: [extra.css]
 theme:
