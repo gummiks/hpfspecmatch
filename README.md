@@ -1,6 +1,8 @@
 # hpfspecmatch
 HPF SpecMatch: Spectral matching of HPF data
 
+<img src='docs/img/hpf_specmatch_logov1.png'/>
+
 # Installation
 
 ```
