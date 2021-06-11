@@ -1,0 +1,18 @@
+# HPF-SpecMatch: spectral matching algorithm
+
+Welcome to the `HPF-SpecMatch` documentation, a tool to derive precise stellar parameter estimates by comparing target spectra to a library of as-observed HPF spectra with well-characterized stellar parameters.
+
+The parameters of interest `HPF-SpecMatch` derives are effective temperature (T<sub>eff</sub>), metallicity ([Fe/H]), surface gravity (log g), and projected rotational velocity<br/>(v sin i).
+ 
+**Contents:**
+
+- <a href='installation'>Installation</a>
+- <a href='quickstart'>Getting Started</a>
+
+**More information**
+
+Take a look at the following resources for further discussion on `HPF-SpecMatch`:
+
+- [Paper I](https://arxiv.org/abs/1912.00291)
+
+*should i also include links to info on HPF and/or specmatch-emp?*

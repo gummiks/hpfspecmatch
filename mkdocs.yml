@@ -1,0 +1,13 @@
+site_name: HPF-SpecMatch
+repo_url: https://github.com/sejones22/hpfspecmatch
+edit_uri: '#root'
+extra_css: [extra.css]
+theme:
+    name: readthedocs
+    include_sidebar: false
+pages:
+    - Home: index.md
+    - Installation: installation.md
+    - Getting Started: '01 - Getting Started - Running Target G_9-40.md'
+    - Exploring the Stellar Library: '02 - Visualizing Stellar Library.md'
+    - Cross-Validation: '03 - cross-validation.md'

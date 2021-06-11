@@ -1,0 +1,2733 @@
+## Import packages
+
+
+```python
+from importlib import reload
+import os
+import glob2
+import pandas as pd
+import numpy as np
+import sys
+import hpfspec
+import hpfspecmatch
+```
+
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+
+
+## Read in Library data
+
+
+```python
+# download library if does not exist
+hpfspecmatch.utils.get_library()
+```
+
+	Created folder: /home/sejones/hpfspecmatch/library/20201008_specmatch_nir_library
+	Downloading library from: https://www.dropbox.com/s/epsacaktwu3by68/20201008_specmatch_nir_library.zip?dl=1
+	Extracting zip file
+	Extracting zip file complete
+	Deleting zip file
+	Download complete
+
+
+```python
+# Stellar library fits files
+LIBRARY_DIR = '../library/20201008_specmatch_nir/'
+library_fitsfiles = glob2.glob(LIBRARY_DIR+'FITS/*/*.fits')
+```
+
+
+```python
+# Read in all files as a HPFSpecList object
+HLS =  hpfspec.HPFSpecList(filelist=library_fitsfiles)
+```
+
+```python
+# list library stars contained in HPFSpecList object
+HLS.splist
+```
+
+
+
+```python
+# More info on the targets
+HLS.df
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>OBJECT_ID</th>
+      <th>filename</th>
+      <th>exptime</th>
+      <th>sn18</th>
+      <th>qprog</th>
+      <th>rv</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>GJ_3507</td>
+      <td>../library/20201008_specmatch_nir/FITS/158_727...</td>
+      <td>330.15</td>
+      <td>322.286835</td>
+      <td>PSU20-1-012</td>
+      <td>-115.280227</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>GJ_109</td>
+      <td>../library/20201008_specmatch_nir/FITS/265_GL1...</td>
+      <td>649.65</td>
+      <td>501.315796</td>
+      <td>PSU19-1-013</td>
+      <td>30.515882</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>GJ_411</td>
+      <td>../library/20201008_specmatch_nir/FITS/390_957...</td>
+      <td>63.90</td>
+      <td>677.483765</td>
+      <td>ENG19-2-003</td>
+      <td>-84.725129</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>NLTT_57303</td>
+      <td>../library/20201008_specmatch_nir/FITS/99_2218...</td>
+      <td>969.15</td>
+      <td>477.344482</td>
+      <td>UT20-2-007</td>
+      <td>-12.142036</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>GJ_176</td>
+      <td>../library/20201008_specmatch_nir/FITS/391_GJ1...</td>
+      <td>330.15</td>
+      <td>261.819824</td>
+      <td>UT20-1-008</td>
+      <td>26.186852</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>83</th>
+      <td>HD_61606</td>
+      <td>../library/20201008_specmatch_nir/FITS/148_616...</td>
+      <td>244.95</td>
+      <td>423.264404</td>
+      <td>UT19-3-008</td>
+      <td>-17.725577</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>LSPM_J1916+0510</td>
+      <td>../library/20201008_specmatch_nir/FITS/257_180...</td>
+      <td>63.90</td>
+      <td>288.445618</td>
+      <td>PSU19-2-004</td>
+      <td>35.846164</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>LHS_3353</td>
+      <td>../library/20201008_specmatch_nir/FITS/61_1649...</td>
+      <td>255.60</td>
+      <td>547.789124</td>
+      <td>UT20-2-007</td>
+      <td>-124.619341</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>GJ_458.2</td>
+      <td>../library/20201008_specmatch_nir/FITS/302_HIP...</td>
+      <td>969.15</td>
+      <td>418.625366</td>
+      <td>PSU19-1-009</td>
+      <td>-14.082877</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>GJ_3358</td>
+      <td>../library/20201008_specmatch_nir/FITS/125_370...</td>
+      <td>330.15</td>
+      <td>266.640015</td>
+      <td>UT19-3-008</td>
+      <td>-45.368845</td>
+    </tr>
+  </tbody>
+</table>
+<p>88 rows × 6 columns</p>
+</div>
+
+
+
+
+```python
+# Read in required information on all of the 
+# This has the Teff, Fe/H, and logg for all of the stars
+# OBJECT_ID is the HPF name of the star
+df_lib = pd.read_csv(LIBRARY_DIR+'20201008_specmatch_nir.csv')
+df_lib
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Name</th>
+      <th>Teff</th>
+      <th>e_Teff</th>
+      <th>R*</th>
+      <th>e_R*</th>
+      <th>log(g)</th>
+      <th>e_log(g)</th>
+      <th>[Fe/H]</th>
+      <th>e_[Fe/H]</th>
+      <th>M*</th>
+      <th>...</th>
+      <th>simbadnames_x</th>
+      <th>ID_NAME</th>
+      <th>OBJECT_ID</th>
+      <th>filename</th>
+      <th>exptime</th>
+      <th>sn18</th>
+      <th>qprog</th>
+      <th>rv</th>
+      <th>basenames</th>
+      <th>simbadnames_y</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>HD_102195</td>
+      <td>5277</td>
+      <td>60</td>
+      <td>0.850</td>
+      <td>0.050</td>
+      <td>4.50</td>
+      <td>0.05</td>
+      <td>0.10</td>
+      <td>0.05</td>
+      <td>0.89</td>
+      <td>...</td>
+      <td>SPOCS_2802|LSPM_J1145+0249|TYC__275-157-1|ASCC...</td>
+      <td>Gaia_DR2_3799626935341796096</td>
+      <td>NLTT_28458</td>
+      <td>../library/20201008_specmatch_nir/FITS/2_10219...</td>
+      <td>649.65</td>
+      <td>339.875092</td>
+      <td>UT20-2-007</td>
+      <td>2.688682</td>
+      <td>Slope-20200428T055102_R01.optimal.fits</td>
+      <td>NAME_Flegetonte|SPOCS_2802|LSPM_J1145+0249|TYC...</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>HD_110463</td>
+      <td>4906</td>
+      <td>60</td>
+      <td>0.760</td>
+      <td>0.030</td>
+      <td>4.55</td>
+      <td>0.05</td>
+      <td>0.06</td>
+      <td>0.05</td>
+      <td>0.80</td>
+      <td>...</td>
+      <td>SPOCS_2843|V*_NP_UMa|NSV_19460|AC2000_1833644|...</td>
+      <td>Gaia_DR2_1571411233756165248</td>
+      <td>GJ_3743</td>
+      <td>../library/20201008_specmatch_nir/FITS/15_1104...</td>
+      <td>649.65</td>
+      <td>514.133606</td>
+      <td>UT20-1-008</td>
+      <td>-9.188611</td>
+      <td>Slope-20191203T123535_R01.optimal.fits</td>
+      <td>SPOCS_2843|V*_NP_UMa|NSV_19460|AC2000_1833644|...</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>HD_110743</td>
+      <td>5198</td>
+      <td>60</td>
+      <td>0.840</td>
+      <td>0.050</td>
+      <td>4.47</td>
+      <td>0.05</td>
+      <td>0.01</td>
+      <td>0.05</td>
+      <td>0.84</td>
+      <td>...</td>
+      <td>SBC9_3576|SPOCS_2844|LSPM_J1243+3420|TYC_2533-...</td>
+      <td>Gaia_DR2_1515243640027361024</td>
+      <td>NLTT_31697</td>
+      <td>../library/20201008_specmatch_nir/FITS/17_1107...</td>
+      <td>969.15</td>
+      <td>378.116333</td>
+      <td>UT20-2-007</td>
+      <td>-6.097251</td>
+      <td>Slope-20200402T041219_R01.optimal.fits</td>
+      <td>SBC9_3576|SPOCS_2844|LSPM_J1243+3420|TYC_2533-...</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>HD_110833</td>
+      <td>4999</td>
+      <td>60</td>
+      <td>0.800</td>
+      <td>0.040</td>
+      <td>4.51</td>
+      <td>0.05</td>
+      <td>0.18</td>
+      <td>0.05</td>
+      <td>0.83</td>
+      <td>...</td>
+      <td>SBC9_3625|PLX_2933|SPOCS_2845|LSPM_J1244+5145|...</td>
+      <td>Gaia_DR2_1568219729458240128</td>
+      <td>GJ_483</td>
+      <td>../library/20201008_specmatch_nir/FITS/18_1108...</td>
+      <td>202.35</td>
+      <td>438.896149</td>
+      <td>UT20-1-008</td>
+      <td>10.405539</td>
+      <td>Slope-20191221T105911_R01.optimal.fits</td>
+      <td>SBC9_3625|PLX_2933|SPOCS_2845|LSPM_J1244+5145|...</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>HD_112914</td>
+      <td>4816</td>
+      <td>60</td>
+      <td>0.700</td>
+      <td>0.030</td>
+      <td>4.51</td>
+      <td>0.05</td>
+      <td>-0.26</td>
+      <td>0.05</td>
+      <td>0.71</td>
+      <td>...</td>
+      <td>SBC9_1742|LSPM_J1259+4159|ASCC__409814|UCAC2__...</td>
+      <td>Gaia_DR2_1527631807474248448</td>
+      <td>NLTT_32537</td>
+      <td>../library/20201008_specmatch_nir/FITS/21_1129...</td>
+      <td>649.65</td>
+      <td>330.296814</td>
+      <td>UT20-1-008</td>
+      <td>27.064545</td>
+      <td>Slope-20200108T094852_R01.optimal.fits</td>
+      <td>SBC9_1742|LSPM_J1259+4159|ASCC__409814|UCAC2__...</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>83</th>
+      <td>GL_338B</td>
+      <td>3867</td>
+      <td>37</td>
+      <td>0.567</td>
+      <td>0.014</td>
+      <td>4.71</td>
+      <td>0.02</td>
+      <td>-0.15</td>
+      <td>0.10</td>
+      <td>0.57</td>
+      <td>...</td>
+      <td>Karmn_J09144+526|PM_J09144+5241|ASCC__253742|2...</td>
+      <td>Gaia_DR2_1022456104850892928</td>
+      <td>GJ_338_B</td>
+      <td>../library/20201008_specmatch_nir/FITS/393_GL3...</td>
+      <td>127.80</td>
+      <td>277.841675</td>
+      <td>UT19-3-008</td>
+      <td>12.475246</td>
+      <td>Slope-20191201T092225_R01.optimal.fits</td>
+      <td>Karmn_J09144+526|PM_J09144+5241|ASCC__253742|2...</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>GL_412A</td>
+      <td>3497</td>
+      <td>39</td>
+      <td>0.398</td>
+      <td>0.009</td>
+      <td>4.87</td>
+      <td>0.02</td>
+      <td>-0.40</td>
+      <td>0.10</td>
+      <td>0.41</td>
+      <td>...</td>
+      <td>Karmn_J11054+435|Gaia_DR2_778947814402405120|P...</td>
+      <td>Gaia_DR2_778947814402405120</td>
+      <td>LSPM_J1105+4331W</td>
+      <td>../library/20201008_specmatch_nir/FITS/394_GL4...</td>
+      <td>127.80</td>
+      <td>295.986267</td>
+      <td>PSU19-1-001</td>
+      <td>68.893501</td>
+      <td>Slope-20190319T041042_R01.optimal.fits</td>
+      <td>Karmn_J11054+435|Gaia_DR2_778947814402405120|P...</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>GL_699</td>
+      <td>3222</td>
+      <td>10</td>
+      <td>0.187</td>
+      <td>0.001</td>
+      <td>5.11</td>
+      <td>0.01</td>
+      <td>-0.39</td>
+      <td>0.10</td>
+      <td>0.16</td>
+      <td>...</td>
+      <td>Karmn_J17578+046|PLX_4098|LSPM_J1757+0441|ASCC...</td>
+      <td>Gaia_DR2_4472832130942575872</td>
+      <td>GJ_699</td>
+      <td>../library/20201008_specmatch_nir/FITS/397_GL6...</td>
+      <td>330.15</td>
+      <td>764.023743</td>
+      <td>ENG18-3-003</td>
+      <td>-110.592499</td>
+      <td>Slope-20181003T014556_R01.optimal.fits</td>
+      <td>Karmn_J17578+046|PLX_4098|LSPM_J1757+0441|ASCC...</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>HIP_57087</td>
+      <td>3416</td>
+      <td>53</td>
+      <td>0.455</td>
+      <td>0.018</td>
+      <td>4.83</td>
+      <td>0.03</td>
+      <td>0.04</td>
+      <td>0.10</td>
+      <td>0.45</td>
+      <td>...</td>
+      <td>Karmn_J11421+267|TYC_1984-2613-1|PLX_2704.1|1R...</td>
+      <td>Gaia_DR2_4017860992519744384</td>
+      <td>GJ_436</td>
+      <td>../library/20201008_specmatch_nir/FITS/401_HIP...</td>
+      <td>649.65</td>
+      <td>513.594360</td>
+      <td>ENG20-1-003</td>
+      <td>9.568895</td>
+      <td>Slope-20200208T064809_R01.optimal.fits</td>
+      <td>Karmn_J11421+267|TYC_1984-2613-1|PLX_2704.1|1R...</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>HIP_83043</td>
+      <td>3590</td>
+      <td>45</td>
+      <td>0.539</td>
+      <td>0.016</td>
+      <td>4.75</td>
+      <td>0.02</td>
+      <td>-0.04</td>
+      <td>0.10</td>
+      <td>0.52</td>
+      <td>...</td>
+      <td>PLX_3857|LSPM_J1658+2544|ASCC__694128|UCAC2__4...</td>
+      <td>Gaia_DR2_4572835535272064768</td>
+      <td>GJ_649</td>
+      <td>../library/20201008_specmatch_nir/FITS/403_HIP...</td>
+      <td>330.15</td>
+      <td>429.857849</td>
+      <td>UT20-1-008</td>
+      <td>4.318801</td>
+      <td>Slope-20200208T120619_R01.optimal.fits</td>
+      <td>PLX_3857|LSPM_J1658+2544|ASCC__694128|UCAC2__4...</td>
+    </tr>
+  </tbody>
+</table>
+<p>88 rows × 33 columns</p>
+</div>
+
+
+
+## Read in example target 
+
+
+```python
+# read in target G-9-40
+filename = '../input/G_9-40/Slope-20190301T024821_R01.optimal.fits'
+targetname = 'G_9-40'
+```
+
+
+```python
+# Bounds to use for different HPF orders (used for knowing where to start/stop resampling the orders)
+hpfspecmatch.BOUNDS
+```
+
+
+
+
+    {'4': [8540.0, 8640.0],
+     '5': [8670.0, 8750.0],
+     '6': [8790.0, 8885.0],
+     '14': [9940.0, 10055.0],
+     '15': [10105.0, 10220.0],
+     '16': [10280.0, 10395.0],
+     '17': [10460.0, 10570.0]}
+
+
+
+
+```python
+# Running full hpfspecmatch for all orders above
+# Results and plots will be saved to output directory
+outputdir = 'G_9-40'
+orders=['4', '5', '6', '14', '15', '16', '17']
+hpfspecmatch.run_specmatch_for_orders(filename, targetname , HLS, df_lib, outputdir, orders=orders)
+```
+
+    Reading from file /home/sejones/anaconda3/lib/python3.8/site-packages/hpfspec-0.1.0-py3.8.egg/hpfspec/data/target_files/G_9-40.config
+    could not convert string to float: 'None' File does not exist!
+    Querying SIMBAD for data
+    Saving to file /home/sejones/anaconda3/lib/python3.8/site-packages/hpfspec-0.1.0-py3.8.egg/hpfspec/data/target_files/G_9-40.config
+    ra 134.71804124999997
+    dec 21.07616722222222
+    pmra 175.512
+    pmdec -318.469
+    px 35.7781
+    rv None
+    epoch 2451545.0
+    Done
+    WARNING: LEAP UPDATE=FALSE
+    Barycentric shifting
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    ##################
+    Order 4
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 90.062
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.556
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  4.055
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 18.084
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  3.392
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 16.678
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.767
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  2.322
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  7.424
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.786
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 10.252
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  4.321
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 21.634
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 100.724
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 24.327
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 17.514
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 12.284
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  5.637
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 20.420
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  3.312
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  3.367
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  4.918
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 20.718
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  2.577
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  7.293
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 17.956
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  7.902
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.962
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 13.692
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  6.059
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 17.689
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 19.388
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 18.139
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 19.967
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 20.589
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 15.872
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  4.917
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  3.716
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 21.061
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  5.580
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 23.056
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 20.819
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  8.310
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 21.399
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  9.563
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 21.652
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 25.105
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.930
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  8.444
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.757
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 114.557
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  5.758
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  4.741
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 18.175
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 11.837
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 21.338
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 13.446
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  3.767
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.276
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 18.164
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  5.633
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  3.555
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 19.556
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  3.620
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 18.124
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 21.418
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 23.407
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  5.228
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  1.476
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  2.046
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 12.253
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 21.283
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  2.815
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 21.102
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 20.367
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  5.511
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 21.889
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 20.579
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  6.224
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 19.209
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 20.312
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 22.245
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 16.238
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 20.942
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.685
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 108.048
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 = 12.108
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 17.345
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_4/
+    ##################
+    ../output/G_9-40/G_9-40_4/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 90.062
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.556
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  4.055
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 18.084
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  3.392
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 16.678
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.767
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  2.322
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  7.424
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.786
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 10.252
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  4.321
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 21.634
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 100.724
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 24.327
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 17.514
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 12.284
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  5.637
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 20.420
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  3.312
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  3.367
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  4.918
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 20.718
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  2.577
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  7.293
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 17.956
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  7.902
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.962
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 13.692
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  6.059
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 17.689
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 19.388
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 18.139
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 19.967
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 20.589
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 15.872
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  4.917
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  3.716
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 21.061
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  5.580
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 23.056
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 20.819
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  8.310
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 21.399
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  9.563
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 21.652
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 25.105
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.930
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  8.444
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.757
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 114.557
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  5.758
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  4.741
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 18.175
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 11.837
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 21.338
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 13.446
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  3.767
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.276
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 18.164
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  5.633
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  3.555
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 19.556
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  3.620
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 18.124
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 21.418
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 23.407
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  5.228
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  1.476
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  2.046
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 12.253
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 21.283
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  2.815
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 21.102
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 20.367
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  5.511
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 21.889
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 20.579
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  6.224
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 19.209
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 20.312
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 22.245
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 16.238
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 20.942
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.685
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 108.048
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 = 12.108
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 17.345
+    Saved to: ../output/G_9-40/G_9-40_4/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_4/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [-2.26051772e+05  7.76024352e+01 -2.92739387e-03 -1.74854904e-07
+      1.48430563e-11 -2.82960812e-16]
+    Applying vsini: 2.3931437174127677km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [ 5.01706982e+06 -1.75185910e+03  6.79644846e-02  3.95608056e-06
+     -3.45324345e-10  6.69880293e-15]
+    Applying vsini: 2.105358690635758km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1:  9.66667+- 0.00000km/s
+    RVabs iteration #2:  9.56890+- 0.00000km/s
+    berv=12.72382252433728,rv=9.568895368294234
+    Applying Chebychev polynomial [ 8.80276631e+06 -3.07125426e+03  1.18993671e-01  6.93486901e-06
+     -6.04539199e-10  1.17176085e-14]
+    Applying vsini: 1.8923422447752993km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=9.569km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -31.66667+- 0.00000km/s
+    RVabs iteration #2: -31.75752+- 0.00000km/s
+    berv=15.759522341124466,rv=-31.757517829453654
+    Applying Chebychev polynomial [ 4.75251701e+06 -1.65765755e+03  6.41943827e-02  3.74284758e-06
+     -3.26122739e-10  6.31926822e-15]
+    Applying vsini: 2.2724707294246334km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-31.758km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -0.66667+- 0.00000km/s
+    RVabs iteration #2: -0.71978+- 0.00000km/s
+    berv=3.180900133062689,rv=-0.7197764335829121
+    Applying Chebychev polynomial [ 1.07042683e+07 -3.73705004e+03  1.44938597e-01  8.43890452e-06
+     -7.36407893e-10  1.42825988e-14]
+    Applying vsini: 1.433703922488531km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-0.720km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper            pv  center_dist
+    0     c1      0.5    0.0    1.0  5.860737e-01    -0.086074
+    1     c2      0.5    0.0    1.0  2.346232e-01     0.265377
+    2     c3      0.5    0.0    1.0  1.247659e-07     0.500000
+    3     c4      0.5    0.0    1.0  1.044832e-01     0.395517
+    LogLn value: -30273.893619749768
+    Log priors 0.0
+    [5.86073725e-01 2.34623183e-01 1.24765868e-07 1.04483153e-01]
+    Stellar parameters:
+    Teff [K]: 3407.1579915890925
+    Fe/H [dex]: -0.07883622546826453
+    logg [dex]: 4.868640270188587
+    vsini [km/s]: 2.2412292141875967
+    Saved to ../output/G_9-40/G_9-40_4/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_4/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_4/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 5
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 66.737
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.018
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  4.150
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 33.029
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  2.585
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 31.961
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.256
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  1.388
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  6.131
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.342
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  7.235
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.788
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 35.960
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 59.439
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 43.034
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 18.137
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  9.295
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  6.561
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 34.501
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  1.536
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  2.392
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  6.606
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 24.818
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.653
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  5.131
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 27.404
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  6.790
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.259
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  9.976
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  4.643
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 22.001
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 35.674
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 29.319
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 22.027
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 36.240
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 15.852
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  3.411
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  2.110
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 36.284
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  2.973
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 40.326
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 32.485
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  5.305
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 34.885
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  7.281
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 29.287
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 16.446
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.065
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  6.924
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.242
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 77.223
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  4.568
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  2.665
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 16.810
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 10.197
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 27.260
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 14.575
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.680
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.760
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 30.184
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  4.045
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.839
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 32.400
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.423
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 28.450
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 37.402
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 11.033
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  3.114
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.964
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  2.215
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  9.637
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 30.695
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.734
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 37.098
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 35.804
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  2.680
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 37.069
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 27.755
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  4.352
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 30.286
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 31.576
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 38.668
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 19.945
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 33.525
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.134
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 66.437
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  8.743
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 30.970
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_5/
+    ##################
+    ../output/G_9-40/G_9-40_5/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 66.737
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.018
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  4.150
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 33.029
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  2.585
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 31.961
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.256
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  1.388
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  6.131
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.342
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  7.235
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.788
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 35.960
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 59.439
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 43.034
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 18.137
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  9.295
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  6.561
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 34.501
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  1.536
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  2.392
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  6.606
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 24.818
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.653
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  5.131
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 27.404
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  6.790
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.259
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  9.976
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  4.643
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 22.001
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 35.674
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 29.319
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 22.027
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 36.240
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 15.852
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  3.411
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  2.110
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 36.284
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  2.973
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 40.326
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 32.485
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  5.305
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 34.885
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  7.281
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 29.287
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 16.446
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.065
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  6.924
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.242
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 77.223
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  4.568
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  2.665
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 16.810
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 10.197
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 27.260
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 14.575
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.680
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.760
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 30.184
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  4.045
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.839
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 32.400
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.423
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 28.450
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 37.402
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 11.033
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  3.114
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.964
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  2.215
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  9.637
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 30.695
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.734
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 37.098
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 35.804
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  2.680
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 37.069
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 27.755
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  4.352
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 30.286
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 31.576
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 38.668
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 19.945
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 33.525
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.134
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 66.437
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  8.743
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 30.970
+    Saved to: ../output/G_9-40/G_9-40_5/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_5/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [-7.97946450e+06  2.74859984e+03 -1.05206177e-01 -6.03776132e-06
+      5.19976390e-10 -9.95038091e-15]
+    Applying vsini: 1.7519334327731886km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [-7.38599572e+05  2.52946035e+02 -9.58973848e-03 -5.55245685e-07
+      4.73604254e-11 -9.00876973e-16]
+    Applying vsini: 1.2757041916434857km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -31.66667+- 0.00000km/s
+    RVabs iteration #2: -31.75752+- 0.00000km/s
+    berv=15.759522341124466,rv=-31.757517829453654
+    Applying Chebychev polynomial [-2.12115192e+07  7.30722822e+03 -2.79739096e-01 -1.60517462e-05
+      1.38261523e-09 -2.64607249e-14]
+    Applying vsini: 1.4118825245820164km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-31.758km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1:  9.66667+- 0.00000km/s
+    RVabs iteration #2:  9.56890+- 0.00000km/s
+    berv=12.72382252433728,rv=9.568895368294234
+    Applying Chebychev polynomial [-2.05850069e+07  7.08891969e+03 -2.71227291e-01 -1.55715137e-05
+      1.34048619e-09 -2.56454410e-14]
+    Applying vsini: 1.0524560550931779km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=9.569km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -14.33333+- 0.00000km/s
+    RVabs iteration #2: -14.30483+- 0.00000km/s
+    berv=-1.8703303771951858,rv=-14.304825754835587
+    Applying Chebychev polynomial [-1.37805361e+07  4.74488600e+03 -1.81495737e-01 -1.04224018e-05
+      8.96988193e-10 -1.71579456e-14]
+    Applying vsini: 1.051136348244809km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-14.305km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper            pv  center_dist
+    0     c1      0.5    0.0    1.0  5.954312e-01    -0.095431
+    1     c2      0.5    0.0    1.0  2.750813e-01     0.224919
+    2     c3      0.5    0.0    1.0  1.294867e-01     0.370513
+    3     c4      0.5    0.0    1.0  8.861002e-08     0.500000
+    LogLn value: -24926.485745010938
+    Log priors 0.0
+    [5.95431204e-01 2.75081271e-01 1.29486667e-01 8.86100246e-08]
+    Stellar parameters:
+    Teff [K]: 3429.9561548105307
+    Fe/H [dex]: -0.060134614336415024
+    logg [dex]: 4.862683421521656
+    vsini [km/s]: 1.5768990280350261
+    Saved to ../output/G_9-40/G_9-40_5/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_5/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_5/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 6
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 75.331
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.539
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  6.550
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 31.713
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  4.453
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 28.340
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  7.308
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  4.222
+    8, Target = G_9-40          Library Star = GJ_134          chi2 = 10.055
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  2.215
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 15.697
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  4.898
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 39.895
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 70.855
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 42.892
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 27.877
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 16.536
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  9.695
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 37.612
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  8.396
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  4.536
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  9.005
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 35.818
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  4.435
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  9.809
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 32.542
+    26, Target = G_9-40          Library Star = HD_260655       chi2 = 10.693
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  2.829
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 17.583
+    29, Target = G_9-40          Library Star = GJ_880          chi2 = 11.139
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 31.640
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 33.832
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 33.669
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 34.561
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 36.408
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 25.115
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  8.190
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  9.378
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 39.277
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  6.611
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 40.249
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 37.248
+    42, Target = G_9-40          Library Star = GJ_809          chi2 = 12.453
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 40.576
+    44, Target = G_9-40          Library Star = GJ_96           chi2 = 13.346
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 39.229
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 15.781
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  3.531
+    48, Target = G_9-40          Library Star = GJ_205          chi2 = 11.470
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  3.373
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 85.462
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  8.265
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  5.749
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 26.785
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 16.634
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 36.530
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 24.145
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  5.138
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.302
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 33.470
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  6.969
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  3.987
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 36.498
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  4.804
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 32.844
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 37.004
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 18.279
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  5.750
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  1.159
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  3.553
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 16.631
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 38.222
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  3.282
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 34.466
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 37.493
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  6.198
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 35.785
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 37.234
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  7.748
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 35.308
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 37.080
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 39.403
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 29.780
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 37.930
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  3.725
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 75.300
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 = 16.259
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 32.284
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_6/
+    ##################
+    ../output/G_9-40/G_9-40_6/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 75.331
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.539
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  6.550
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 31.713
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  4.453
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 28.340
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  7.308
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  4.222
+    8, Target = G_9-40          Library Star = GJ_134          chi2 = 10.055
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  2.215
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 15.697
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  4.898
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 39.895
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 70.855
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 42.892
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 27.877
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 16.536
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  9.695
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 37.612
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  8.396
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  4.536
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  9.005
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 35.818
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  4.435
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  9.809
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 32.542
+    26, Target = G_9-40          Library Star = HD_260655       chi2 = 10.693
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  2.829
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 17.583
+    29, Target = G_9-40          Library Star = GJ_880          chi2 = 11.139
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 31.640
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 33.832
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 33.669
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 34.561
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 36.408
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 25.115
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  8.190
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  9.378
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 39.277
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  6.611
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 40.249
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 37.248
+    42, Target = G_9-40          Library Star = GJ_809          chi2 = 12.453
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 40.576
+    44, Target = G_9-40          Library Star = GJ_96           chi2 = 13.346
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 39.229
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 15.781
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  3.531
+    48, Target = G_9-40          Library Star = GJ_205          chi2 = 11.470
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  3.373
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 85.462
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  8.265
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  5.749
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 26.785
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 16.634
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 36.530
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 24.145
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  5.138
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.302
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 33.470
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  6.969
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  3.987
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 36.498
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  4.804
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 32.844
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 37.004
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 18.279
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  5.750
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  1.159
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  3.553
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 16.631
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 38.222
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  3.282
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 34.466
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 37.493
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  6.198
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 35.785
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 37.234
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  7.748
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 35.308
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 37.080
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 39.403
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 29.780
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 37.930
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  3.725
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 75.300
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 = 16.259
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 32.284
+    Saved to: ../output/G_9-40/G_9-40_6/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_6/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [-9.34619734e+06  3.17334234e+03 -1.19737429e-01 -6.77088989e-06
+      5.74823449e-10 -1.08425200e-14]
+    Applying vsini: 2.0521672704780385km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [-5.21325031e+06  1.77063610e+03 -6.68448250e-02 -3.77811677e-06
+      3.20914887e-10 -6.05514617e-15]
+    Applying vsini: 1.728021409679413km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1:  9.66667+- 0.00000km/s
+    RVabs iteration #2:  9.56890+- 0.00000km/s
+    berv=12.72382252433728,rv=9.568895368294234
+    Applying Chebychev polynomial [-3.63437741e+06  1.23225934e+03 -4.63897241e-02 -2.62878505e-06
+      2.22663712e-10 -4.19403441e-15]
+    Applying vsini: 1.4153949665397692km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=9.569km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -31.66667+- 0.00000km/s
+    RVabs iteration #2: -31.75752+- 0.00000km/s
+    berv=15.759522341124466,rv=-31.757517829453654
+    Applying Chebychev polynomial [-1.17257659e+05  3.72065427e+01 -1.24383607e-03 -7.86983646e-08
+      5.91141780e-12 -1.02555200e-16]
+    Applying vsini: 1.741206926334328km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-31.758km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -7.50000+- 0.00000km/s
+    RVabs iteration #2: -7.27487+- 0.00000km/s
+    berv=-9.240116330008666,rv=-7.27487473254186
+    Applying Chebychev polynomial [ 6.87135510e+06 -2.33399209e+03  8.81247649e-02  4.98023303e-06
+     -4.23082608e-10  7.98358656e-15]
+    Applying vsini: 0.672532356571313km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-7.275km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper            pv  center_dist
+    0     c1      0.5    0.0    1.0  8.949170e-01    -0.394917
+    1     c2      0.5    0.0    1.0  5.421742e-02     0.445783
+    2     c3      0.5    0.0    1.0  1.630151e-07     0.500000
+    3     c4      0.5    0.0    1.0  1.162227e-02     0.488378
+    LogLn value: -29304.814510967866
+    Log priors 0.0
+    [8.94916967e-01 5.42174210e-02 1.63015118e-07 1.16222736e-02]
+    Stellar parameters:
+    Teff [K]: 3446.4058013335857
+    Fe/H [dex]: -0.01968559416003717
+    logg [dex]: 4.87285072904619
+    vsini [km/s]: 1.9768374932501438
+    Saved to ../output/G_9-40/G_9-40_6/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_6/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_6/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 14
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 37.942
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.238
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  9.141
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 41.104
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  3.568
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 38.081
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  9.222
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  4.407
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  7.065
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.944
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 11.435
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  3.595
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 36.997
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 37.615
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 44.555
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 15.573
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 10.591
+    17, Target = G_9-40          Library Star = GJ_908          chi2 = 14.684
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 38.331
+    19, Target = G_9-40          Library Star = GJ_70           chi2 = 12.325
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  4.011
+    21, Target = G_9-40          Library Star = GJ_87           chi2 = 12.345
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 24.793
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  4.818
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  8.052
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 31.022
+    26, Target = G_9-40          Library Star = HD_260655       chi2 = 10.572
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  3.146
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 10.985
+    29, Target = G_9-40          Library Star = GJ_880          chi2 = 11.357
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 25.682
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 38.396
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 35.013
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 24.722
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 37.013
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 14.832
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  7.194
+    37, Target = G_9-40          Library Star = GJ_699          chi2 = 11.802
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 36.489
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  2.169
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 39.352
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 34.253
+    42, Target = G_9-40          Library Star = GJ_809          chi2 = 11.773
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 34.889
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  9.771
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 27.444
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 22.026
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  3.012
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  8.030
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  3.116
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 41.152
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  7.595
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  2.377
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 17.570
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 10.480
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 25.774
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 30.953
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  4.030
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.921
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 35.373
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  6.520
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.680
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 35.136
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  4.164
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 29.827
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 41.434
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 10.337
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  4.748
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.731
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  4.405
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 10.430
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 37.026
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  2.358
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 40.738
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 39.166
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  1.660
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 40.507
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 25.827
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  5.622
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 34.096
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 34.812
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 40.223
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 23.018
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 34.614
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  3.787
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 40.451
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  9.658
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 36.780
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_14/
+    ##################
+    ../output/G_9-40/G_9-40_14/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 37.942
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.238
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  9.141
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 41.104
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  3.568
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 38.081
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  9.222
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  4.407
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  7.065
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.944
+    10, Target = G_9-40          Library Star = GJ_846          chi2 = 11.435
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  3.595
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 36.997
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 37.615
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 44.555
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 15.573
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 = 10.591
+    17, Target = G_9-40          Library Star = GJ_908          chi2 = 14.684
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 38.331
+    19, Target = G_9-40          Library Star = GJ_70           chi2 = 12.325
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  4.011
+    21, Target = G_9-40          Library Star = GJ_87           chi2 = 12.345
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 24.793
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  4.818
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  8.052
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 31.022
+    26, Target = G_9-40          Library Star = HD_260655       chi2 = 10.572
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  3.146
+    28, Target = G_9-40          Library Star = GJ_172          chi2 = 10.985
+    29, Target = G_9-40          Library Star = GJ_880          chi2 = 11.357
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 25.682
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 38.396
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 35.013
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 24.722
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 37.013
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 14.832
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  7.194
+    37, Target = G_9-40          Library Star = GJ_699          chi2 = 11.802
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 36.489
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  2.169
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 39.352
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 34.253
+    42, Target = G_9-40          Library Star = GJ_809          chi2 = 11.773
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 34.889
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  9.771
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 27.444
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 22.026
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  3.012
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  8.030
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  3.116
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 41.152
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  7.595
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  2.377
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 17.570
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 = 10.480
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 25.774
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 30.953
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  4.030
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.921
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 35.373
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  6.520
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.680
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 35.136
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  4.164
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 29.827
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 41.434
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 = 10.337
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  4.748
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.731
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  4.405
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 = 10.430
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 37.026
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  2.358
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 40.738
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 39.166
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  1.660
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 40.507
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 25.827
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  5.622
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 34.096
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 34.812
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 40.223
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 23.018
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 34.614
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  3.787
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 40.451
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  9.658
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 36.780
+    Saved to: ../output/G_9-40/G_9-40_14/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_14/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [-5.95623959e+06  1.78933475e+03 -5.97717660e-02 -2.98356106e-06
+      2.24241989e-10 -3.74241793e-15]
+    Applying vsini: 1.528114336174573km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [-5.09439995e+06  1.52973733e+03 -5.10626312e-02 -2.55056359e-06
+      1.91557475e-10 -3.19549362e-15]
+    Applying vsini: 1.1256843380761163km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 26.16667+- 0.00000km/s
+    RVabs iteration #2: 26.16948+- 0.00000km/s
+    berv=-28.021023312359198,rv=26.169475980482684
+    Applying Chebychev polynomial [-5.14403401e+06  1.54307937e+03 -5.14233337e-02 -2.57248563e-06
+      1.92886068e-10 -3.21439684e-15]
+    Applying vsini: 2.1698990549685466km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=26.169km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 18.16667+- 0.00000km/s
+    RVabs iteration #2: 18.15418+- 0.00000km/s
+    berv=25.05575342333539,rv=18.1541811021219
+    Applying Chebychev polynomial [-1.13962268e+07  3.42052636e+03 -1.14095467e-01 -5.70279850e-06
+      4.27996889e-10 -7.13656227e-15]
+    Applying vsini: 2.3363480848982903km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=18.154km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1:  9.66667+- 0.00000km/s
+    RVabs iteration #2:  9.56890+- 0.00000km/s
+    berv=12.72382252433728,rv=9.568895368294234
+    Applying Chebychev polynomial [-7.11929941e+06  2.13794867e+03 -7.13746524e-02 -3.56467995e-06
+      2.67759805e-10 -4.46707531e-15]
+    Applying vsini: 0.612183740251516km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=9.569km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper        pv  center_dist
+    0     c1      0.5    0.0    1.0  0.987122    -0.487122
+    1     c2      0.5    0.0    1.0  0.000004     0.499996
+    2     c3      0.5    0.0    1.0  0.010549     0.489451
+    3     c4      0.5    0.0    1.0  0.002315     0.497685
+    LogLn value: -39450.3975345004
+    Log priors 0.0
+    [9.87122271e-01 3.97525972e-06 1.05492010e-02 2.31472647e-03]
+    Stellar parameters:
+    Teff [K]: 3445.96621647874
+    Fe/H [dex]: -0.02126297392213145
+    logg [dex]: 4.880655488748336
+    vsini [km/s]: 1.5367448921643145
+    Saved to ../output/G_9-40/G_9-40_14/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_14/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_14/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 15
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 27.882
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.022
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  6.017
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 26.688
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  2.776
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 25.282
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  5.300
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  2.514
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  5.429
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.483
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  8.148
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.884
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 27.795
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 25.882
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 33.492
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 14.644
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  8.860
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  9.670
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 28.017
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  6.822
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  2.759
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  8.802
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 22.327
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  2.634
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  5.781
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 24.315
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  7.651
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  2.093
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  9.306
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  8.362
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 21.599
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 26.212
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 25.416
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 19.995
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 27.003
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 14.278
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  4.562
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  6.562
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 27.751
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.809
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 29.554
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 27.159
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  7.467
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 27.258
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  7.402
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 24.052
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 15.183
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.238
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  5.901
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.364
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 30.610
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  5.438
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  1.806
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 15.791
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  8.743
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 23.875
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 21.207
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.964
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.145
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 25.463
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  4.500
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.384
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 26.425
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.952
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 24.360
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 29.301
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  9.076
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  3.552
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.759
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  3.159
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  8.883
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 27.616
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.795
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 28.951
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 27.510
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  1.482
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 28.523
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 23.284
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  4.388
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 26.400
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 26.509
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 29.887
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 19.083
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 27.380
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.611
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 28.798
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  8.088
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 25.801
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_15/
+    ##################
+    ../output/G_9-40/G_9-40_15/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 27.882
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  1.022
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  6.017
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 26.688
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  2.776
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 25.282
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  5.300
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  2.514
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  5.429
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.483
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  8.148
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.884
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 27.795
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 25.882
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 33.492
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 14.644
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  8.860
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  9.670
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 28.017
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  6.822
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  2.759
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  8.802
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 22.327
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  2.634
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  5.781
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 24.315
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  7.651
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  2.093
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  9.306
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  8.362
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 21.599
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 26.212
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 25.416
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 19.995
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 27.003
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 14.278
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  4.562
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  6.562
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 27.751
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.809
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 29.554
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 27.159
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  7.467
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 27.258
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  7.402
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 24.052
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 = 15.183
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  2.238
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  5.901
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  2.364
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 30.610
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  5.438
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  1.806
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 15.791
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  8.743
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 23.875
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 21.207
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.964
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  4.145
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 25.463
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  4.500
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  1.384
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 26.425
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.952
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 24.360
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 29.301
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  9.076
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  3.552
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.759
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  3.159
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  8.883
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 27.616
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.795
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 28.951
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 27.510
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  1.482
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 28.523
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 23.284
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  4.388
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 26.400
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 26.509
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 29.887
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 19.083
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 27.380
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  2.611
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 28.798
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  8.088
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 25.801
+    Saved to: ../output/G_9-40/G_9-40_15/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_15/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [ 2.79699822e+06 -8.25234597e+02  2.70455693e-02  1.33141785e-06
+     -9.81774065e-11  1.60922276e-15]
+    Applying vsini: 1.5031591613165118km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [ 5.24681761e+06 -1.54940205e+03  5.08515896e-02  2.50005203e-06
+     -1.84615230e-10  3.02868552e-15]
+    Applying vsini: 1.0361633418649963km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 18.16667+- 0.00000km/s
+    RVabs iteration #2: 18.15418+- 0.00000km/s
+    berv=25.05575342333539,rv=18.1541811021219
+    Applying Chebychev polynomial [ 4.43548335e+06 -1.30954785e+03  4.29655185e-02  2.11297883e-06
+     -1.55981313e-10  2.55842670e-15]
+    Applying vsini: 2.591288169696643km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=18.154km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 26.16667+- 0.00000km/s
+    RVabs iteration #2: 26.16948+- 0.00000km/s
+    berv=-28.021023312359198,rv=26.169475980482684
+    Applying Chebychev polynomial [ 8.38548626e+06 -2.47452483e+03  8.11214907e-02  3.99244707e-06
+     -2.94482933e-10  4.82769518e-15]
+    Applying vsini: 2.5082301817571384km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=26.169km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1:  9.66667+- 0.00000km/s
+    RVabs iteration #2:  9.56890+- 0.00000km/s
+    berv=12.72382252433728,rv=9.568895368294234
+    Applying Chebychev polynomial [ 3.00649891e+06 -8.87758648e+02  2.91326321e-02  1.43243692e-06
+     -1.05764121e-10  1.73496533e-15]
+    Applying vsini: 0.339860963248964km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=9.569km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper        pv  center_dist
+    0     c1      0.5    0.0    1.0  0.946246    -0.446246
+    1     c2      0.5    0.0    1.0  0.025438     0.474562
+    2     c3      0.5    0.0    1.0  0.025640     0.474360
+    3     c4      0.5    0.0    1.0  0.002676     0.497324
+    LogLn value: -39461.8244235828
+    Log priors 0.0
+    [0.9462464  0.02543813 0.0256399  0.00267557]
+    Stellar parameters:
+    Teff [K]: 3443.1085403328207
+    Fe/H [dex]: -0.02461019787916642
+    logg [dex]: 4.879653788839232
+    vsini [km/s]: 1.5218683101890715
+    Saved to ../output/G_9-40/G_9-40_15/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_15/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_15/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 16
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 50.731
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  0.817
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  3.885
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 31.313
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  1.892
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 30.418
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.321
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  1.278
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  3.850
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.050
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  5.104
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.064
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 27.912
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 45.841
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 34.742
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 10.896
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  6.660
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  6.428
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 28.724
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  1.822
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  1.955
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  6.120
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 17.905
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.193
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  3.479
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 23.638
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  5.995
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.099
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  7.225
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  3.359
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 18.422
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 32.669
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 26.455
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 14.865
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 31.042
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 10.156
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  2.795
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  2.671
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 28.085
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.004
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 32.692
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 26.141
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  4.220
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 25.850
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  5.104
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 19.508
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 =  9.774
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  1.728
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  4.302
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  1.849
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 53.578
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  3.935
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  0.978
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 12.233
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  6.282
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 20.539
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 14.220
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.155
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.094
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 27.223
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  3.599
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  0.885
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 26.910
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.008
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 23.286
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 32.475
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  7.311
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  2.311
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.719
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  1.956
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  6.714
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 25.356
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.401
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 32.000
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 31.884
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  0.987
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 32.717
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 19.252
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  3.122
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 25.699
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 25.679
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 31.314
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 15.345
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 26.582
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  1.688
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 51.043
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  5.533
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 27.972
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_16/
+    ##################
+    ../output/G_9-40/G_9-40_16/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 50.731
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  0.817
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  3.885
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 31.313
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  1.892
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 30.418
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  2.321
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  1.278
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  3.850
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  1.050
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  5.104
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  2.064
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 27.912
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 45.841
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 34.742
+    15, Target = G_9-40          Library Star = HD_28343        chi2 = 10.896
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  6.660
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  6.428
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 28.724
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  1.822
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  1.955
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  6.120
+    22, Target = G_9-40          Library Star = GJ_418          chi2 = 17.905
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.193
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  3.479
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 = 23.638
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  5.995
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  1.099
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  7.225
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  3.359
+    30, Target = G_9-40          Library Star = HD_59582        chi2 = 18.422
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 32.669
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 26.455
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 = 14.865
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 31.042
+    35, Target = G_9-40          Library Star = HD_88230        chi2 = 10.156
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  2.795
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  2.671
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 28.085
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.004
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 32.692
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 26.141
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  4.220
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 25.850
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  5.104
+    45, Target = G_9-40          Library Star = HD_85488        chi2 = 19.508
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 =  9.774
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  1.728
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  4.302
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  1.849
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 53.578
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  3.935
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  0.978
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 = 12.233
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  6.282
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 = 20.539
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 = 14.220
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  2.155
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  3.094
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 27.223
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  3.599
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  0.885
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 26.910
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  2.008
+    64, Target = G_9-40          Library Star = HD_35112        chi2 = 23.286
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 32.475
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  7.311
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  2.311
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.719
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  1.956
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  6.714
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 25.356
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  1.401
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 32.000
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 31.884
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  0.987
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 32.717
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 = 19.252
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  3.122
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 25.699
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 25.679
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 31.314
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 = 15.345
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 26.582
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  1.688
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 51.043
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  5.533
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 27.972
+    Saved to: ../output/G_9-40/G_9-40_16/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_16/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [-1.47849312e+06  4.29795872e+02 -1.38977641e-02 -6.70336170e-07
+      4.87703747e-11 -7.87624872e-16]
+    Applying vsini: 1.7730882888532218km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [ 2.48429939e+06 -7.22190929e+02  2.33529508e-02  1.12637695e-06
+     -8.19506399e-11  1.32348042e-15]
+    Applying vsini: 1.4807507315301618km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 18.16667+- 0.00000km/s
+    RVabs iteration #2: 18.15418+- 0.00000km/s
+    berv=25.05575342333539,rv=18.1541811021219
+    Applying Chebychev polynomial [ 3.25808831e+06 -9.45798149e+02  3.05139957e-02  1.47486628e-06
+     -1.07062024e-10  1.72662432e-15]
+    Applying vsini: 2.4446028368466264km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=18.154km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -9.16667+- 0.00000km/s
+    RVabs iteration #2: -9.13154+- 0.00000km/s
+    berv=-8.71897079189557,rv=-9.131541114367172
+    Applying Chebychev polynomial [ 5.25068410e+06 -1.52267941e+03  4.90436521e-02  2.37415612e-06
+     -1.72052247e-10  2.77184256e-15]
+    Applying vsini: 2.068634546420633km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-9.132km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 26.16667+- 0.00000km/s
+    RVabs iteration #2: 26.16948+- 0.00000km/s
+    berv=-28.021023312359198,rv=26.169475980482684
+    Applying Chebychev polynomial [ 3.89106667e+06 -1.12809789e+03  3.63192381e-02  1.75886527e-06
+     -1.27409245e-10  2.05209599e-15]
+    Applying vsini: 2.165906963268081km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=26.169km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper            pv  center_dist
+    0     c1      0.5    0.0    1.0  5.753216e-01    -0.075322
+    1     c2      0.5    0.0    1.0  1.781979e-01     0.321802
+    2     c3      0.5    0.0    1.0  6.390556e-02     0.436094
+    3     c4      0.5    0.0    1.0  3.984429e-07     0.500000
+    LogLn value: -40540.984391480306
+    Log priors 0.0
+    [5.75321604e-01 1.78197914e-01 6.39055562e-02 3.98442908e-07]
+    Stellar parameters:
+    Teff [K]: 3402.023582066052
+    Fe/H [dex]: -0.05826475001478151
+    logg [dex]: 4.886247561844804
+    vsini [km/s]: 1.8356266578518634
+    Saved to ../output/G_9-40/G_9-40_16/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_16/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_16/G_9-40_chi2results.csv
+    ##################
+    ##################
+    Order 17
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 19.097
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  0.690
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  2.146
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 13.539
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  1.421
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 13.016
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  1.268
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  0.883
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  3.060
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  0.847
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  2.990
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  1.371
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 11.492
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 17.439
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 14.980
+    15, Target = G_9-40          Library Star = HD_28343        chi2 =  6.305
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  3.610
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  3.369
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 11.837
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  0.892
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  1.185
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  3.240
+    22, Target = G_9-40          Library Star = GJ_418          chi2 =  7.799
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.082
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  2.514
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 =  9.454
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  2.915
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  0.763
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  3.722
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  2.273
+    30, Target = G_9-40          Library Star = HD_59582        chi2 =  7.607
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 14.393
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 10.643
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 =  7.025
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 13.353
+    35, Target = G_9-40          Library Star = HD_88230        chi2 =  5.465
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  1.560
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  1.543
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 11.913
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.002
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 14.003
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 10.821
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  2.412
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 10.700
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  3.065
+    45, Target = G_9-40          Library Star = HD_85488        chi2 =  8.982
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 =  7.071
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  1.088
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  3.449
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  1.221
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 20.882
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  2.273
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  0.824
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 =  5.781
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  4.284
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 =  8.685
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 =  8.594
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  1.418
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  2.068
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 10.935
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  1.922
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  0.752
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 10.799
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  1.238
+    64, Target = G_9-40          Library Star = HD_35112        chi2 =  9.519
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 14.057
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  3.918
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  1.643
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.588
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  1.261
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  3.699
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 10.177
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  0.992
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 13.789
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 13.071
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  0.871
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 14.461
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 =  8.571
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  1.969
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 10.282
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 10.294
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 13.400
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 =  6.710
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 10.961
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  1.276
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 19.560
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  3.273
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 10.967
+    ##################
+    Saving results to ../output/G_9-40/G_9-40_17/
+    ##################
+    ../output/G_9-40/G_9-40_17/ already exists.
+    ##################
+    Running Chi2 loop
+    ##################
+    First step: Matching target star to all library stars
+    ##################
+    0, Target = G_9-40          Library Star = GJ_3507         chi2 = 19.097
+    1, Target = G_9-40          Library Star = GJ_109          chi2 =  0.690
+    2, Target = G_9-40          Library Star = GJ_411          chi2 =  2.146
+    3, Target = G_9-40          Library Star = NLTT_57303      chi2 = 13.539
+    4, Target = G_9-40          Library Star = GJ_176          chi2 =  1.421
+    5, Target = G_9-40          Library Star = HD_186306       chi2 = 13.016
+    6, Target = G_9-40          Library Star = GJ_725_A        chi2 =  1.268
+    7, Target = G_9-40          Library Star = GJ_694          chi2 =  0.883
+    8, Target = G_9-40          Library Star = GJ_134          chi2 =  3.060
+    9, Target = G_9-40          Library Star = GJ_436          chi2 =  0.847
+    10, Target = G_9-40          Library Star = GJ_846          chi2 =  2.990
+    11, Target = G_9-40          Library Star = GJ_361          chi2 =  1.371
+    12, Target = G_9-40          Library Star = HD_87883        chi2 = 11.492
+    13, Target = G_9-40          Library Star = HD_24238        chi2 = 17.439
+    14, Target = G_9-40          Library Star = HD_173701       chi2 = 14.980
+    15, Target = G_9-40          Library Star = HD_28343        chi2 =  6.305
+    16, Target = G_9-40          Library Star = GJ_338_A        chi2 =  3.610
+    17, Target = G_9-40          Library Star = GJ_908          chi2 =  3.369
+    18, Target = G_9-40          Library Star = GJ_840          chi2 = 11.837
+    19, Target = G_9-40          Library Star = GJ_70           chi2 =  0.892
+    20, Target = G_9-40          Library Star = GJ_806          chi2 =  1.185
+    21, Target = G_9-40          Library Star = GJ_87           chi2 =  3.240
+    22, Target = G_9-40          Library Star = GJ_418          chi2 =  7.799
+    23, Target = G_9-40          Library Star = GJ_849          chi2 =  1.082
+    24, Target = G_9-40          Library Star = GJ_895          chi2 =  2.514
+    25, Target = G_9-40          Library Star = NLTT_32537      chi2 =  9.454
+    26, Target = G_9-40          Library Star = HD_260655       chi2 =  2.915
+    27, Target = G_9-40          Library Star = GJ_4070         chi2 =  0.763
+    28, Target = G_9-40          Library Star = GJ_172          chi2 =  3.722
+    29, Target = G_9-40          Library Star = GJ_880          chi2 =  2.273
+    30, Target = G_9-40          Library Star = HD_59582        chi2 =  7.607
+    31, Target = G_9-40          Library Star = GJ_434          chi2 = 14.393
+    32, Target = G_9-40          Library Star = HD_53927        chi2 = 10.643
+    33, Target = G_9-40          Library Star = GJ_9304         chi2 =  7.025
+    34, Target = G_9-40          Library Star = NLTT_28458      chi2 = 13.353
+    35, Target = G_9-40          Library Star = HD_88230        chi2 =  5.465
+    36, Target = G_9-40          Library Star = GJ_15_A         chi2 =  1.560
+    37, Target = G_9-40          Library Star = GJ_699          chi2 =  1.543
+    38, Target = G_9-40          Library Star = GJ_483          chi2 = 11.913
+    39, Target = G_9-40          Library Star = GJ_4333         chi2 =  1.002
+    40, Target = G_9-40          Library Star = GJ_658          chi2 = 14.003
+    41, Target = G_9-40          Library Star = GJ_3743         chi2 = 10.821
+    42, Target = G_9-40          Library Star = GJ_809          chi2 =  2.412
+    43, Target = G_9-40          Library Star = GJ_892          chi2 = 10.700
+    44, Target = G_9-40          Library Star = GJ_96           chi2 =  3.065
+    45, Target = G_9-40          Library Star = HD_85488        chi2 =  8.982
+    46, Target = G_9-40          Library Star = LSPM_J2331+1956N chi2 =  7.071
+    47, Target = G_9-40          Library Star = GJ_393          chi2 =  1.088
+    48, Target = G_9-40          Library Star = GJ_205          chi2 =  3.449
+    49, Target = G_9-40          Library Star = GJ_2066         chi2 =  1.221
+    50, Target = G_9-40          Library Star = LSPM_J0255+2652E chi2 = 20.882
+    51, Target = G_9-40          Library Star = LSPM_J1105+4331W chi2 =  2.273
+    52, Target = G_9-40          Library Star = GJ_1148         chi2 =  0.824
+    53, Target = G_9-40          Library Star = GJ_3494         chi2 =  5.781
+    54, Target = G_9-40          Library Star = BD+29_2279      chi2 =  4.284
+    55, Target = G_9-40          Library Star = *_111_Tau_B     chi2 =  8.685
+    56, Target = G_9-40          Library Star = GJ_9066         chi2 =  8.594
+    57, Target = G_9-40          Library Star = GJ_173          chi2 =  1.418
+    58, Target = G_9-40          Library Star = GJ_15_B         chi2 =  2.068
+    59, Target = G_9-40          Library Star = HD_4628         chi2 = 10.935
+    60, Target = G_9-40          Library Star = GJ_686          chi2 =  1.922
+    61, Target = G_9-40          Library Star = GJ_273          chi2 =  0.752
+    62, Target = G_9-40          Library Star = LSPM_J1712+1821 chi2 = 10.799
+    63, Target = G_9-40          Library Star = GJ_745_A        chi2 =  1.238
+    64, Target = G_9-40          Library Star = HD_35112        chi2 =  9.519
+    65, Target = G_9-40          Library Star = KIC_9955598     chi2 = 14.057
+    66, Target = G_9-40          Library Star = V*_V2689_Ori    chi2 =  3.918
+    67, Target = G_9-40          Library Star = GJ_382          chi2 =  1.643
+    68, Target = G_9-40          Library Star = GJ_251          chi2 =  0.588
+    69, Target = G_9-40          Library Star = GJ_725_B        chi2 =  1.261
+    70, Target = G_9-40          Library Star = GJ_338_B        chi2 =  3.699
+    71, Target = G_9-40          Library Star = GJ_649.1_C      chi2 = 10.177
+    72, Target = G_9-40          Library Star = GJ_250_B        chi2 =  0.992
+    73, Target = G_9-40          Library Star = GJ_4183         chi2 = 13.789
+    74, Target = G_9-40          Library Star = NLTT_31697      chi2 = 13.071
+    75, Target = G_9-40          Library Star = GJ_105_B        chi2 =  0.871
+    76, Target = G_9-40          Library Star = GJ_5            chi2 = 14.461
+    77, Target = G_9-40          Library Star = NLTT_21526      chi2 =  8.571
+    78, Target = G_9-40          Library Star = GJ_649          chi2 =  1.969
+    79, Target = G_9-40          Library Star = NLTT_26380      chi2 = 10.282
+    80, Target = G_9-40          Library Star = HD_196124       chi2 = 10.294
+    81, Target = G_9-40          Library Star = GJ_27           chi2 = 13.400
+    82, Target = G_9-40          Library Star = BD+00_444       chi2 =  6.710
+    83, Target = G_9-40          Library Star = HD_61606        chi2 = 10.961
+    84, Target = G_9-40          Library Star = LSPM_J1916+0510 chi2 =  1.276
+    85, Target = G_9-40          Library Star = LHS_3353        chi2 = 19.560
+    86, Target = G_9-40          Library Star = GJ_458.2        chi2 =  3.273
+    87, Target = G_9-40          Library Star = GJ_3358         chi2 = 10.967
+    Saved to: ../output/G_9-40/G_9-40_17/G_9-40_chi2_3panel.png
+    Saved to: ../output/G_9-40/G_9-40_17/G_9-40_chi2_corrpanel.png
+    ##################
+    Performing Linear Combination Optimization
+    ##################
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 14.33333+- 0.00000km/s
+    RVabs iteration #2: 14.48091+- 0.00000km/s
+    berv=-13.85248087461531,rv=14.48090854621002
+    Target=G_9-40, rv=14.481km/s, rvmed=14.481km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 23.00000+- 0.00000km/s
+    RVabs iteration #2: 22.89954+- 0.00000km/s
+    berv=-6.209610930654121,rv=22.89954436399567
+    Applying Chebychev polynomial [ 6.48702974e+06 -1.85067641e+03  5.86643767e-02  2.78925509e-06
+     -1.98934722e-10  3.15293114e-15]
+    Applying vsini: 2.0709625447293294km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=22.900km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 30.50000+- 0.00000km/s
+    RVabs iteration #2: 30.51588+- 0.00000km/s
+    berv=-20.558423139315074,rv=30.515882303673667
+    Applying Chebychev polynomial [ 2.23785571e+06 -6.39001818e+02  2.02848975e-02  9.63180484e-07
+     -6.87951136e-11  1.09130921e-15]
+    Applying vsini: 1.7475310833577586km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=30.516km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: 18.16667+- 0.00000km/s
+    RVabs iteration #2: 18.15418+- 0.00000km/s
+    berv=25.05575342333539,rv=18.1541811021219
+    Applying Chebychev polynomial [ 1.38582659e+07 -3.95375411e+03  1.25337326e-01  5.95894289e-06
+     -4.25029331e-10  6.73658784e-15]
+    Applying vsini: 2.6155555487765234km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=18.154km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -31.66667+- 0.00000km/s
+    RVabs iteration #2: -31.75752+- 0.00000km/s
+    berv=15.759522341124466,rv=-31.757517829453654
+    Applying Chebychev polynomial [ 6.46028479e+06 -1.84416105e+03  5.85151069e-02  2.77964796e-06
+     -1.98443226e-10  3.14702544e-15]
+    Applying vsini: 1.7440750253617268km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-31.758km/s
+    AIRTOVAC (TRUE for HARPS, FALSE TRUE HPF):  False
+    RVabs iteration #1: -9.16667+- 0.00000km/s
+    RVabs iteration #2: -9.13154+- 0.00000km/s
+    berv=-8.71897079189557,rv=-9.131541114367172
+    Applying Chebychev polynomial [ 1.97559064e+05 -5.71036735e+01  1.84851465e-03  8.62019221e-08
+     -6.27869612e-12  1.00790151e-16]
+    Applying vsini: 2.3872887637926317km/s
+    Target=G_9-40, rv=14.481km/s, rvmed=-9.132km/s
+    Running PyDE Optimizer
+    Optimized using PyDE
+    Final parameters:
+      labels  centers  lower  upper        pv  center_dist
+    0     c1      0.5    0.0    1.0  0.662145    -0.162145
+    1     c2      0.5    0.0    1.0  0.000019     0.499981
+    2     c3      0.5    0.0    1.0  0.143399     0.356601
+    3     c4      0.5    0.0    1.0  0.194434     0.305566
+    LogLn value: -39221.256788933366
+    Log priors 0.0
+    [6.62145323e-01 1.92060461e-05 1.43399235e-01 1.94434279e-01]
+    Stellar parameters:
+    Teff [K]: 3419.880747139963
+    Fe/H [dex]: -0.060128090423632076
+    logg [dex]: 4.8678228796304515
+    vsini [km/s]: 2.085493033061703
+    Saved to ../output/G_9-40/G_9-40_17/G_9-40_compositecomparison.png
+    Saved results to ../output/G_9-40/G_9-40_17/G_9-40_results.pkl
+    ##################
+    Saving Chi2 dataframe to ../output/G_9-40/G_9-40_17/G_9-40_chi2results.csv
+    ##################
+
+
+
+![png](output_12_1.png)
+
+
+
+![png](output_12_2.png)
+
+
+
+![png](output_12_3.png)
+
+
+
+![png](output_12_4.png)
+
+
+
+![png](output_12_5.png)
+
+
+
+![png](output_12_6.png)
+
+
+
+![png](output_12_7.png)
+
+
+
+![png](output_12_8.png)
+
+
+
+![png](output_12_9.png)
+
+
+
+![png](output_12_10.png)
+
+
+
+![png](output_12_11.png)
+
+
+
+![png](output_12_12.png)
+
+
+
+![png](output_12_13.png)
+
+
+
+![png](output_12_14.png)
+
+
+
+![png](output_12_15.png)
+
+
+
+![png](output_12_16.png)
+
+
+
+![png](output_12_17.png)
+
+
+
+![png](output_12_18.png)
+
+
+
+![png](output_12_19.png)
+
+
+
+![png](output_12_20.png)
+
+
+
+![png](output_12_21.png)
+
+
+
+![png](output_12_22.png)
+
+
+
+![png](output_12_23.png)
+
+
+
+![png](output_12_24.png)
+
+
+
+![png](output_12_25.png)
+
+
+
+![png](output_12_26.png)
+
+
+
+![png](output_12_27.png)
+
+
+
+![png](output_12_28.png)
+
+
+
+![png](output_12_29.png)
+
+
+
+![png](output_12_30.png)
+
+
+
+![png](output_12_31.png)
+
+
+
+![png](output_12_32.png)
+
+
+
+![png](output_12_33.png)
+
+
+
+![png](output_12_34.png)
+
+
+
+![png](output_12_35.png)
+
+
+## Summarizing orders for a given HPFSpecMatch Run
+
+The following code explores the standard deviations in the stellar parameters between different orders to check how consistent they are across orders. For the formal parameter uncertainties, we recommend using the cross-validation technique.
+
+
+```python
+# collects pickle files for each order of SpecMatch analysis for given target
+# contains teff, logg, feh, vsini, weights, and filenames for each order
+targetname = 'G_9-40'
+files = sorted(glob2.glob('../output/{}/*/*.pkl'.format(targetname)))
+```
+
+
+```python
+# summarizes values from different orders from SpecMatch analysis
+# saves two csv files to target output directory:
+# 1) parameter values from all of the orders
+# 2) median and the standard deviation from different orders
+
+df_orders, df_orders_summary = hpfspecmatch.summarize_values_from_orders(files,targetname)
+```
+
+    Saved to ../output/G_9-40/G_9-40_overview.csv
+    Saved to ../output/G_9-40/G_9-40_med.csv
+
+
+
+```python
+df_orders
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>teff</th>
+      <th>logg</th>
+      <th>feh</th>
+      <th>vsini</th>
+      <th>weights</th>
+      <th>filenames</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>3445.966216</td>
+      <td>4.880655</td>
+      <td>-0.021263</td>
+      <td>1.536745</td>
+      <td>[0.9871222707941371, 3.975259717928887e-06, 0....</td>
+      <td>../output/G_9-40/G_9-40_14/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>3443.108540</td>
+      <td>4.879654</td>
+      <td>-0.024610</td>
+      <td>1.521868</td>
+      <td>[0.9462463977735506, 0.02543813011247835, 0.02...</td>
+      <td>../output/G_9-40/G_9-40_15/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3402.023582</td>
+      <td>4.886248</td>
+      <td>-0.058265</td>
+      <td>1.835627</td>
+      <td>[0.5753216043282053, 0.1781979143301433, 0.063...</td>
+      <td>../output/G_9-40/G_9-40_16/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3419.880747</td>
+      <td>4.867823</td>
+      <td>-0.060128</td>
+      <td>2.085493</td>
+      <td>[0.662145323136096, 1.9206046061370503e-05, 0....</td>
+      <td>../output/G_9-40/G_9-40_17/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3407.157992</td>
+      <td>4.868640</td>
+      <td>-0.078836</td>
+      <td>2.241229</td>
+      <td>[0.5860737253678127, 0.23462318263576154, 1.24...</td>
+      <td>../output/G_9-40/G_9-40_4/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>3429.956155</td>
+      <td>4.862683</td>
+      <td>-0.060135</td>
+      <td>1.576899</td>
+      <td>[0.595431204185202, 0.275081271072599, 0.12948...</td>
+      <td>../output/G_9-40/G_9-40_5/G_9-40_results.pkl</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>3446.405801</td>
+      <td>4.872851</td>
+      <td>-0.019686</td>
+      <td>1.976837</td>
+      <td>[0.8949169672606618, 0.054217420954312, 1.6301...</td>
+      <td>../output/G_9-40/G_9-40_6/G_9-40_results.pkl</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+df_orders_summary
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>parameters</th>
+      <th>median</th>
+      <th>std</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>teff</td>
+      <td>3429.956155</td>
+      <td>18.567072</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>logg</td>
+      <td>4.872851</td>
+      <td>0.008391</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>feh</td>
+      <td>-0.058265</td>
+      <td>0.023769</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>vsini</td>
+      <td>1.835627</td>
+      <td>0.288907</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
