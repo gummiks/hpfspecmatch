@@ -80,5 +80,4 @@ ax.errorbar(df_lib['[Fe/H]'], df_lib['Teff'],df_lib['e_Teff'],df_lib['e_[Fe/H]']
 bx.errorbar(df_lib['log(g)'], df_lib['Teff'],df_lib['e_Teff'],df_lib['e_log(g)'],lw=0,elinewidth=1.,marker="o",mew=0.5,markersize=8,capsize=4);
 ```
 
-
 ![png](img/library.png)
