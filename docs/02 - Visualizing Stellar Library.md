@@ -81,4 +81,4 @@ bx.errorbar(df_lib['log(g)'], df_lib['Teff'],df_lib['e_Teff'],df_lib['e_log(g)']
 ```
 
 
-![png](output_9_0.png)
+![png](library.png)
