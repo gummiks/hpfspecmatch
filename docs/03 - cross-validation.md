@@ -1,3 +1,5 @@
+# Cross-validation
+
 ## Import packages
 
 
@@ -14,8 +16,13 @@ import hpfspec
 import hpfspecmatch
 ```
 
-## Read in fitsfiles
+## Read in Library
 
+
+```python
+# download library if does not exist
+hpfspecmatch.utils.get_library()
+```
 
 ```python
 # List of stellar library fits files
@@ -60,7 +67,7 @@ savefolder = '../library/20210406_specmatch_nir_library/crossval/o{}_crossval'.f
 hpfspecmatch.plot_crossvalidation_results_1d(order,df_crossval,savefolder)
 ```
 
-![png](output_9_1.png)
+![png](img/crossval1d.png)
 
 
 ## Plot 2D Performance
@@ -73,7 +80,7 @@ savefolder = '../library/20210406_specmatch_nir_library/crossval/o{}_crossval'.f
 hpfspecmatch.plot_crossvalidation_results_2d(order,df_crossval,savefolder)
 ```
 
-![png](output_11_1.png)
+![png](img/crossval2d.png)
 
 
 ## Cross-validation Errors
