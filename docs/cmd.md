@@ -7,7 +7,7 @@
 To run `HPF-SpecMatch` on a target spectrum:
 
 ```python
-$ run_specmatch.py [-h] [--savefolder SAVEFOLDER] [--orders ORDERS [ORDERS ...]] [--vsinimax VSINIMAX] filename object
+$ python run_specmatch.py [-h] [--savefolder SAVEFOLDER] [--orders ORDERS [ORDERS ...]] [--vsinimax VSINIMAX] filename object
 ```
 
 ### Arguments
@@ -29,10 +29,10 @@ $ run_specmatch.py [-h] [--savefolder SAVEFOLDER] [--orders ORDERS [ORDERS ...]]
 **--vsinimax**  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum v sin i to fit for
 
-```python
-$ filename = input/G_9-40/Slope-20190301T024821_R01.optimal.fits
+### Example code to run HPF-SpecMatch with G 9-40 spectrum
 
-$ run_specmatch.py --savefolder results --orders 5 17 --vsinimax 20 filename G_9-40
+```python
+$ python run_specmatch.py --savefolder results --orders 4 5 6 14 15 16 17 --vsinimax 20 input/G_9-40/Slope-20190301T024821_R01.optimal.fits G_9-40
 ```
 
 ## Cross-Validation
@@ -40,7 +40,7 @@ $ run_specmatch.py --savefolder results --orders 5 17 --vsinimax 20 filename G_9
 To run the leave-one-out cross-validation process and assess the stellar library performance for a given order:
 
 ```python
-$ run_crossval.py [-h] [--df_lib DF_LIB] [--HLS HLS] [--savefolder SAVEFOLDER] [--plot_results] order
+$ python run_crossval.py [-h] [--df_lib DF_LIB] [--HLS HLS] [--savefolder SAVEFOLDER] [--plot_results] order
 ```
 
 ### Arguments
@@ -62,6 +62,8 @@ $ run_crossval.py [-h] [--df_lib DF_LIB] [--HLS HLS] [--savefolder SAVEFOLDER] [
 **--plot_results**  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Save cross validation summary plots
 
+### Example code to run stellar library cross-validation with HPF Order 17
+
 ```python
-$ run_crossval.py --df_lib hpfspecmatch.config.PATH_LIBRARY_DB  --HLS hpfspecmatch.config.LIBRARY_FITSFILES --savefolder results --plot_results True 17
+$ python run_crossval.py --savefolder results --plot_results 17
 ```
