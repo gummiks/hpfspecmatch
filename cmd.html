@@ -9,7 +9,7 @@
   
   
   <link rel="shortcut icon" href="img/favicon.ico">
-  <title>Getting Started - HPF-SpecMatch</title>
+  <title>Command Line - HPF-SpecMatch</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700" />
 
   <link rel="stylesheet" href="css/theme.css" />
@@ -19,8 +19,8 @@
   
   <script>
     // Current page data
-    var mkdocs_page_name = "Getting Started";
-    var mkdocs_page_input_path = "quickstart.md";
+    var mkdocs_page_name = "Command Line";
+    var mkdocs_page_input_path = "cmd.md";
     var mkdocs_page_url = null;
   </script>
   
@@ -58,8 +58,10 @@
                     <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a>
                     </li>
                 </ul>
-                <ul>
-                    <li class="toctree-l1"><a class="reference internal" href="cmd.html">Command Line</a>
+                <ul class="current">
+                    <li class="toctree-l1 current"><a class="reference internal current" href="cmd.html">Command Line</a>
+    <ul class="current">
+    </ul>
                     </li>
                 </ul>
                 <ul>
@@ -95,10 +97,10 @@
     
       
     
-    <li>Getting Started</li>
+    <li>Command Line</li>
     <li class="wy-breadcrumbs-aside">
       
-        <a href="https://github.com/gummiks/hpfspecmatch#root/quickstart.md"
+        <a href="https://github.com/gummiks/hpfspecmatch#root/cmd.md"
           class="icon icon-github"> Edit on GitHub</a>
       
     </li>
@@ -110,59 +112,59 @@
           <div role="main">
             <div class="section">
               
-                <h1 id="getting-started">Getting Started</h1>
-<h2 id="using-idiffuse-to-calculate-expected-photometric-precisions">Using <code>iDiffuse</code> to calculate expected photometric precisions</h2>
-<h3 id="import-necessary-packages">Import necessary packages</h3>
-<pre><code class="language-python">from importlib import reload
-import os
-import glob2
-import pandas as pd
-import numpy as np
-import sys
-import hpfspec
-import hpfspecmatch
+                <h1 id="command-line">Command Line</h1>
+<p><code>HPF-SpecMatch</code> can be run in terminal using the following commands</p>
+<h1 id="hpf-specmatch">HPF-SpecMatch</h1>
+<p>To run <code>HPF-SpecMatch</code> on a target spectrum:</p>
+<pre><code class="language-python">$ python run_hpfspecmatch.py [-h] [--savefolder SAVEFOLDER] [--orders ORDERS [ORDERS ...]] [--vsinimax VSINIMAX] filename object
 </code></pre>
-<h3 id="read-in-library">Read in library</h3>
-<p>Make sure there is a folder called ../library/20201008_specmatch_nir/</p>
-<p>Download data from here and unzip in the ../library/ folder</p>
-<ul>
-<li>
-<p><em>insert dropbox link</em>
-It should be structured:</p>
-</li>
-<li>
-<p>../library/20201008_specmatch_nir/20201008_specmatch_nir.csv</p>
-</li>
-<li>../library/20201008_specmatch_nir/FITS/</li>
-</ul>
-<pre><code class="language-python"># List of fitsfiles
-LIBRARY_DIR = '../library/20201008_specmatch_nir/'
-
-library_fitsfiles = glob2.glob(LIBRARY_DIR+'FITS/*/*.fits')
-library_fitsfiles # should be many fitsfiles
-
+<h3 id="required-arguments">Required Arguments</h3>
+<p><strong>filename</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name of the target spectrum file (e.g. input/G_9-40/Slope-20190301T024821_R01.optimal.fits)</p>
+<p><strong>object</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name of object to reduce; SIMBAD or TIC Queryable (e.g. G_9-40)</p>
+<h3 id="optional-arguments">Optional Arguments</h3>
+<p><strong>--savefolder</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Output directory to save result files (e.g. --savefolder results)</p>
+<p><strong>--orders</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Which HPF orders to run; orders 4, 5, 6, 14, 15, 16, and 17 recommended as they are the cleanest orders with minimal tellurics (e.g. --orders 5 17)</p>
+<p><strong>--vsinimax</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum v sin i to fit for in km/s (e.g. --vsinimax 20)</p>
+<h3 id="example-code-to-run-hpf-specmatch-with-g-9-40-spectrum">Example code to run HPF-SpecMatch with G 9-40 spectrum</h3>
+<pre><code class="language-python">$ python run_hpfspecmatch.py --savefolder results --orders 4 5 6 14 15 16 17 --vsinimax 20 input/G_9-40/Slope-20190301T024821_R01.optimal.fits G_9-40
 </code></pre>
-<pre><code class="language-python"># Read in all files as a HPFSpecList object
-HLS = hpfspec.HPFSpecList(filelist=library_fitsfiles)
+<h1 id="cross-validation">Cross-Validation</h1>
+<p>To run the leave-one-out cross-validation process and assess the stellar library performance for a given order:</p>
+<pre><code class="language-python">$ python run_crossval.py [-h] [--df_lib DF_LIB] [--HLS HLS] [--savefolder SAVEFOLDER] [--plot_results] order
 </code></pre>
-<pre><code class="language-python"># Read in required information on all of the
-# This has the Teff, Fe/H, and logg for all of the stars
-# OBJECT_ID is the HPF name of the star
-df_lib = pd.read_csv(LIBRARY_DIR+'20201008_specmatch_nir.csv')
-df_lib
-</code></pre>
-<h3 id="read-in-example-target">Read in example target</h3>
-<pre><code class="language-python"># Target data
-targetfilename = '../input/toi1468/Slope-20200129T015117_R01.optimal.fits'
-Htarget = hpfspec.HPFSpectrum(targetfilename,targetname='UCAC4 547-002110')
-
-# Reference data
-Hrefs   = HLS.splist
+<h3 id="required-arguments_1">Required Arguments</h3>
+<p><strong>order</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Which HPF order to use for cross-validation; orders 4, 5, 6, 14, 15, 16, and 17 recommended as they are the cleanest orders with minimal tellurics (e.g. 5 17)</p>
+<h3 id="optional-arguments_1">Optional Arguments</h3>
+<p><strong>--df_lib</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Path to stellar library csv (defaults to installation library csv file)</p>
+<p><strong>--HLS</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;List of stellar library fits files (defaults to installation library)</p>
+<p><strong>--savefolder</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Output directory to save result files (e.g. --savefolder results)</p>
+<p><strong>--plot_results</strong><br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Save cross validation summary plots; flag to plot results</p>
+<h3 id="example-code-to-run-stellar-library-cross-validation-with-hpf-order-17">Example code to run stellar library cross-validation with HPF Order 17</h3>
+<pre><code class="language-python">$ python run_crossval.py --savefolder results --plot_results 17
 </code></pre>
               
             </div>
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="01%20-%20Getting%20Started%20-%20Running%20Target%20G_9-40.html" class="btn btn-neutral float-right" title="Getting Started">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -190,6 +192,10 @@ Hrefs   = HLS.splist
         </span>
     
     
+      <span><a href="installation.html" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="01%20-%20Getting%20Started%20-%20Running%20Target%20G_9-40.html" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>

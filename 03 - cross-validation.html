@@ -59,6 +59,10 @@
                     </li>
                 </ul>
                 <ul>
+                    <li class="toctree-l1"><a class="reference internal" href="cmd.html">Command Line</a>
+                    </li>
+                </ul>
+                <ul>
                     <li class="toctree-l1"><a class="reference internal" href="01%20-%20Getting%20Started%20-%20Running%20Target%20G_9-40.html">Getting Started</a>
                     </li>
                 </ul>
@@ -69,6 +73,18 @@
                 <ul class="current">
                     <li class="toctree-l1 current"><a class="reference internal current" href="03%20-%20cross-validation.html">Cross-Validation</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#import-packages">Import packages</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#read-in-library">Read in Library</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-cross-validation-for-order-17">Running Cross-validation for Order 17</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#plot-1d-performance">Plot 1D Performance</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#plot-2d-performance">Plot 2D Performance</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cross-validation-errors">Cross-validation Errors</a>
+    </li>
     </ul>
                     </li>
                 </ul>
@@ -108,7 +124,8 @@
           <div role="main">
             <div class="section">
               
-                <h2 id="import-packages">Import packages</h2>
+                <h1 id="cross-validation">Cross-validation</h1>
+<h2 id="import-packages">Import packages</h2>
 <pre><code class="language-python">from importlib import reload
 import os
 import glob2
@@ -120,7 +137,10 @@ import sys
 import hpfspec
 import hpfspecmatch
 </code></pre>
-<h2 id="read-in-fitsfiles">Read in fitsfiles</h2>
+<h2 id="read-in-library">Read in Library</h2>
+<pre><code class="language-python"># download library if does not exist
+hpfspecmatch.utils.get_library()
+</code></pre>
 <pre><code class="language-python"># List of stellar library fits files
 library_fitsfiles = hpfspecmatch.config.LIBRARY_FITSFILES
 
@@ -148,14 +168,14 @@ df_crossval = pd.read_csv('../library/20210406_specmatch_nir_library/crossval/o{
 savefolder = '../library/20210406_specmatch_nir_library/crossval/o{}_crossval'.format(order)
 hpfspecmatch.plot_crossvalidation_results_1d(order,df_crossval,savefolder)
 </code></pre>
-<p><img alt="png" src="output_9_1.png" /></p>
+<p><img alt="png" src="img/crossval1d.png" /></p>
 <h2 id="plot-2d-performance">Plot 2D Performance</h2>
 <pre><code class="language-python">order = '17'
 df_crossval = pd.read_csv('../library/20210406_specmatch_nir_library/crossval/o{}_crossval/crossvalidation_resuls_o{}.csv'.format(order,order))
 savefolder = '../library/20210406_specmatch_nir_library/crossval/o{}_crossval'.format(order)
 hpfspecmatch.plot_crossvalidation_results_2d(order,df_crossval,savefolder)
 </code></pre>
-<p><img alt="png" src="output_11_1.png" /></p>
+<p><img alt="png" src="img/crossval2d.png" /></p>
 <h2 id="cross-validation-errors">Cross-validation Errors</h2>
 <pre><code class="language-python">order = '17'
 df_crossval = pd.read_csv('../library/20210406_specmatch_nir_library/crossval/o{}_crossval/crossvalidation_resuls_o{}.csv'.format(order,order))
