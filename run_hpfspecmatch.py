@@ -8,13 +8,13 @@ if __name__=='__main__':
     parser.add_argument("object",type=str,help="HPF object to reduce (SIMBAD or TIC Queryable)")
     parser.add_argument("--savefolder",type=str,default="specmatch_results",help="Specify foldername to save (e.g. results_123)")
     parser.add_argument("--orders",type=int,default=[4,5,6,14,15,16,17],help="Orders to use for HPF SpecMatch, e.g., --orders 4 5 6",nargs='+')
-    parser.add_argument("--vsinimax",type=int,default=40.,help="Maximum vsini to fit for")
+    parser.add_argument("--vsinimax",type=int,default=40.,help="Maximum vsini to fit for in km/s")
 
     args = parser.parse_args()
 
     # Make sure library is availabe, if not, download it
     hpfspecmatch.get_library()
-    
+
     filename = args.filename
     targetname = args.object
     outputdir = args.savefolder
