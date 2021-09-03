@@ -11,6 +11,8 @@ if __name__=='__main__':
     parser.add_argument("--HLS",type=str,default=hpfspecmatch.config.LIBRARY_FITSFILES,help="List of stellar library fits files, e.g., hpfspecmatch.config.LIBRARY_FITSFILES")
     parser.add_argument("--savefolder",type=str,default=hpfspecmatch.config.PATH_LIBRARY_CROSSVAL,help="Specify foldername to save (e.g. o17_crossval)")
     parser.add_argument("--plot_results",default=True,help="Save cross validation summary plots",action="store_true")
+    parser.add_argument("--calibrate_feh",default=True,help="Calibrate the Fe/H",action="store_true")
+    parser.add_argument("--scaleres",type=float,default=1.,help="Residual Scaling Factor")
 
     args = parser.parse_args()
 
@@ -22,6 +24,14 @@ if __name__=='__main__':
     HLS = hpfspec.HPFSpecList(filelist=hpfspecmatch.config.LIBRARY_FITSFILES)
     outputdir = args.savefolder
     plot_results = args.plot_results
+    calibrate_feh = args.calibrate_feh
+    scaleres = args.scaleres
 
     # Run cross validation for orders
-    hpfspecmatch.run_crossvalidation_for_orders(order, df_lib, HLS, outputdir, plot_results)
+    hpfspecmatch.run_crossvalidation_for_orders(order=order,
+                                                df_lib=df_lib,
+                                                HLS=HLS,
+                                                outputdir=outputdir,
+                                                plot_results=plot_results,
+                                                calibrate_feh=calibrate_feh,
+                                                scaleres=scaleres)

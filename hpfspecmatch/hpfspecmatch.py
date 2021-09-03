@@ -18,6 +18,15 @@ import astropy.modeling
 from .priors import PriorSet, UP, NP, JP
 from .likelihood import ll_normal_es_py, ll_normal_ev_py
 from . import config
+from matplotlib.gridspec import GridSpec
+from matplotlib import rcParams
+rcParams["savefig.dpi"] = 100
+rcParams['mathtext.fontset'] = 'stix'
+rcParams['font.family'] = 'STIXGeneral'
+rcParams['font.weight'] = "normal"
+rcParams["axes.formatter.useoffset"] = False
+rcParams['xtick.direction']='in'
+rcParams['ytick.direction']='in'
 
 def get_data_ready(H1,Hrefs,w,v,polyvals=None,vsinis=None,plot=False):
     """
@@ -112,7 +121,7 @@ class FitLinCombSpec(object):
     def __init__(self,LPFunctionLinComb,teffs=[],fehs=[],loggs=[],vsinis=[],
                  teff_known=None,tefferr_known=None,
                  feh_known=None,feherr_known=None,
-                 logg_known=None,loggerr_known=None,targetname=''):
+                 logg_known=None,loggerr_known=None,targetname='',calibrate_feh=True):
         self.lpf = LPFunctionLinComb
         self.teffs = teffs
         self.fehs = fehs
@@ -125,16 +134,18 @@ class FitLinCombSpec(object):
         self.logg_known = logg_known
         self.loggerr_known = loggerr_known
         self.targetname = targetname
+        self.calibrate_feh = calibrate_feh
         
     def calculate_stellar_parameters(self,weights):
-        #print('Weights',weights)
-        #print('Teffs',self.teffs)
         if self.teffs != []:
             self.teff = weighted_value(self.teffs,weights)
         else: 
             self.teff = np.nan
-        if self.teffs != []:
+        if self.fehs != []:
             self.feh = weighted_value(self.fehs,weights)
+            if self.calibrate_feh:
+                print('Calibrating feh: {:0.3f} -> {:0.3f}'.format(self.feh,detrend_feh(self.feh)))
+                self.feh = detrend_feh(self.feh)
         else: 
             self.feh = np.nan
         if self.loggs != []: 
@@ -175,6 +186,8 @@ class FitLinCombSpec(object):
         
     def plot_model_with_components(self,pv,fig=None,ax=None,names=None,savename='compositeComparison.pdf',title='',scaleres=1.):
         """
+        INPUT:
+            scaleres - amount to scale residuals from composite spectrum (default 1)
         Make a plot of the 5 best stars and compare to targets spectrum.
         Compare composite spectrum to target spectrum and plot residuals.
         """
@@ -347,8 +360,12 @@ class FitTargetRefStarVsiniPolynomial(object):
         #random = self.lpf.ps.random
         #centers = np.array(self.lpf.ps.centers)
         
-        self.res = scipy.optimize.minimize(self.chi2f,centers,method='Nelder-Mead',tol=1e-7,
-                                   options={'maxiter': 10000, 'maxfev': 5000})#, 'disp': True})
+        #self.res = scipy.optimize.minimize(self.chi2f,centers,method='Nelder-Mead',tol=1e-1,
+        #                           options={'maxiter': 1000, 'maxfev': 2000, 'disp': True})
+        self.res = scipy.optimize.minimize(self.chi2f,centers,method='Powell',tol=1e-1,
+                                   options={'maxiter': 1000, 'maxfev': 2000, 'disp': True})
+        #self.res = scipy.optimize.minimize(self.chi2f,centers,method='Nelder-Mead',tol=1e-7,
+        #                           options={'maxiter': 10000, 'maxfev': 5000, 'disp': True})
         
         self.min_pv = self.res.x
         
@@ -450,7 +467,8 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,ma
             print("##################")
 
         chi, vsini, p  = chi2spectraPolyVsini(ww,H1,H2,plot=plot_all,maxvsini=maxvsini)
-        if verbose: print('{:3d}/{:2d}, Target = {:18s} Library Star = {:18s} chi2 = {:6.3f}'.format(i+1,len(Hrefs),H1.object,H2.object, chi))
+        if verbose: 
+            print('{:3d}/{:2d}, Target = {:18s} Library Star = {:18s} chi2 = {:6.3f}'.format(i+1,len(Hrefs),H1.object,H2.object, chi))
         chis.append(chi)
         poly_params.append(p)
         vsinis.append(vsini)
@@ -483,7 +501,8 @@ def weighted_value(values,weights):
     """
     return np.dot(values,weights)
 
-def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/',maxvsini=30.):
+def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefolder='out/',
+                  maxvsini=30.,calibrate_feh=True,scaleres=1.):
     """
     Second chi2 loop, creates composite spectrum 
     
@@ -496,6 +515,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
         df_target - dataframe with target parameter info
         plot - save SpecMatch plots (boolean)
         savefolder - output directory name (String)
+        scaleres - amount to scale residuals from composite spectrum (default 1)
     
     OUTPUT:
         stellar parameters teff, feh, logg, vsini, and their errors
@@ -572,13 +592,14 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
                          feherr_known=feherr_known,
                          logg_known=logg_known,
                          loggerr_known=loggerr_known,
-                         targetname=targetname)
+                         targetname=targetname,
+                         calibrate_feh=calibrate_feh)
     LCS.minimize_PyDE(mcmc=False)
     print(LCS.min_pv)
     #LCS.plot_model(LCS.min_pv)# SEJ
     if plot:
         LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,title = "",
-                                       savename=savefolder+targetname+'_compositecomparison.png')
+                                       savename=savefolder+targetname+'_compositecomparison.png',scaleres=scaleres)
         
     teff = LCS.teff
     feh = LCS.feh
@@ -762,8 +783,8 @@ def summarize_values_from_orders(files_pkl,targetname):
     return df, df_med
 
 def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_results', HLS=None, 
-                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4', '5', '6', '14', '15', '16', '17'],
-                             maxvsini=30.):
+                             path_df_lib=config.PATH_LIBRARY_DB, orders = ['4','5','6','14','15','16','17'],
+                             maxvsini=30.,calibrate_feh=True,scaleres=1.):
     """
     run hpfspecmatch for a given target file and orders
     
@@ -825,7 +846,10 @@ def run_specmatch_for_orders(targetfile, targetname, outputdirectory='specmatch_
                                                       v,         # velocity range to use for absolute rv
                                                       df_lib,    # dataframe with info on Teff/FeH/logg for the library stars
                                                       savefolder=savefolder,
-                                                      maxvsini=maxvsini)
+                                                      maxvsini=maxvsini,
+                                                      calibrate_feh=calibrate_feh,
+                                                      scaleres=scaleres)
+
         
 def plot_crossvalidation_results_1d(order,df_crossval,savefolder):
     """
@@ -924,8 +948,11 @@ def plot_crossvalidation_results_2d(order,df_crossval,savefolder):
     fig.subplots_adjust(wspace=0.02,hspace=0.02)
     plt.savefig('{}/crossvalidation_o{}_plot2D.png'.format(savefolder,order))
     
-        
-def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=None, outputdir=config.PATH_LIBRARY_CROSSVAL, plot_results = True):
+def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=None,
+                                   outputdir=config.PATH_LIBRARY_CROSSVAL,
+                                   plot_results = True,
+                                   calibrate_feh=True,
+                                   scaleres=1.):
     """
     Run cross validation for a given order
     
@@ -940,6 +967,7 @@ def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=Non
         HLS - refence stars as an HPFSpecList object
         outputdir - folder to save overall results and plots
         plot_results - plots figures summarizing the cross validation results
+        scaleres - amount to scale residuals from composite spectrum (default 1)
     
     OUTPUT:
         returns df_crossval dataframe with columns 'teff','feh','logg','vsini',
@@ -989,23 +1017,118 @@ def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=Non
         Hrefs   = np.delete(np.array(HLS.splist),i)
         # Run specmatch without the target star in the library
         _res = run_specmatch(Htarget,Hrefs,ww,v,df_lib,df_target,plot=True,
-                             savefolder='{}/plots/'.format(outputdir))
+                             savefolder='{}/plots/'.format(outputdir),
+                             calibrate_feh=calibrate_feh,
+                             scaleres=scaleres)
         res.append(_res)
         obj_names.append(Htarget.object)
         
     # Collect all of the results and save
     df_crossval = pd.DataFrame(res,columns=['teff','feh','logg','vsini','d_teff','d_feh','d_logg','_','__'])
     df_crossval = df_crossval[['teff','feh','logg','vsini','d_teff','d_feh','d_logg']]
+    df_crossval['teff_true'] = df_crossval.teff - df_crossval.d_teff
+    df_crossval['feh_true'] = df_crossval.feh - df_crossval.d_feh
+    df_crossval['logg_true'] = df_crossval.logg - df_crossval.d_logg
     df_crossval['targetname'] = obj_names
+
+    fig, ax = plt.subplots(dpi=200)
+    plot_crossval_feh_delta_feh(df_crossval['feh_true'].values,df_crossval['d_feh'].values,ax=ax)
+    fig.savefig('{}/crossvalidation_feh_delta_feh_o{}.png'.format(outputdir,order),dpi=200)
     
-    result_savename = '{}/crossvalidation_resuls_o{}.csv'.format(outputdir,order)
+    result_savename = '{}/crossvalidation_results_o{}.csv'.format(outputdir,order)
     df_crossval.to_csv(result_savename, index=False)
     print('Saved tesult to: {}'.format(result_savename))
     
     if plot_results == True:
         plot_crossvalidation_results_1d(order,df_crossval,outputdir)
         plot_crossvalidation_results_2d(order,df_crossval,outputdir)
+        plot_crossvalidation_results_main(order,df_crossval,outputdir)
         
     
     return df_crossval
 
+def detrend_feh(feh):
+    """
+    Calibrate trend in (Delta Fe/H = Fe/H_recovered - Fe/H_true) vs Fe/H_true
+    
+    INPUT:
+        recovered feh value from specmatch
+        
+    OUTPUT:
+        calibrated feh after removing trend
+        
+    NOTES:
+        Currently correct for order 5
+    """
+    # Paramters for order 5
+    p1 = -0.28935366
+    p0 = -0.00095669
+    a = (1./(p1+1.))  # 1.4071697041315936
+    b = -(p0/(p1+1.)) # -0.0013462251842456543
+    return a*feh + b
+
+def plot_crossvalidation_results_main(order,df_crossval,savefolder):
+    """
+    Main crossvalidation results plot
+    """
+    PW = 10.
+    PH = 3.
+    fig = plt.figure(figsize=(PW,PH),dpi=200)
+    gs0 = GridSpec(1,2)
+    gs0.update(top=0.92, bottom = 0.11,wspace=0.01,left=0.05,right=0.6)
+
+    gs1 = GridSpec(1,1)
+    gs1.update(top=0.92, bottom = 0.11,hspace=0.18,left=0.68,right=0.98)
+
+    ax = plt.subplot(gs0[0,0])
+    bx = plt.subplot(gs0[0,1])
+    cx = plt.subplot(gs1[0,0])
+    
+    ax.plot(df_crossval['feh_true'],df_crossval['teff_true'],marker='o',lw=0,markeredgecolor='black')
+    bx.plot(df_crossval['logg_true'],df_crossval['teff_true'],marker='o',lw=0,markeredgecolor='black')
+    for i in range(len(df_crossval)):
+        _x = [df_crossval['feh_true'].values[i],df_crossval['feh'].values[i]]
+        _y = [df_crossval['teff_true'].values[i],df_crossval['teff'].values[i]]
+        ax.plot(_x,_y,color='crimson',lw=0.5,zorder=-10)
+
+        _x = [df_crossval['logg_true'].values[i],df_crossval['logg'].values[i]]
+        if i == 0:
+            bx.plot(_x,_y,color='crimson',lw=0.5,label='Crossvalidation Value',zorder=-10)
+        else:
+            bx.plot(_x,_y,color='crimson',lw=0.5,zorder=-10)
+
+    ax.set_xlim(-0.6,0.6)
+    ax.set_xlabel('[Fe/H]',labelpad=0)
+    ax.set_ylabel('$T_{\mathrm{eff}}$ [K]',labelpad=0)
+    bx.set_xlabel('$\log (g)$',labelpad=0)
+    ax.minorticks_on()
+    bx.minorticks_on()
+    bx.yaxis.set_ticks([])
+    bx.set_ylim(*ax.get_ylim())
+    fig.subplots_adjust(wspace=0.05)
+    bx.legend(loc='upper right')
+    fig.suptitle('Library Performance (HPF Order {})'.format(order),y=0.98)
+    plot_crossval_feh_delta_feh(df_crossval.feh_true.values,df_crossval.d_feh.values,ax=cx)
+    fig.savefig('{}/crossvalidation_o{}_main.png'.format(savefolder,order))
+
+def plot_crossval_feh_delta_feh(feh_true,d_feh,ax=None):
+    """
+    INPUT:
+        feh_true - True Fe/H
+        d_feh - delta Fe/H = Fe/H_specmatch - Fe/H_True
+
+    EXAMPLE:
+        plot_crossval_feh_delta_feh(df_res['[Fe/H]'].values,df_res['d_feh'].values)
+    """
+    if ax is None:
+        fig, ax = plt.subplots(dpi=200)
+    ax.plot(feh_true,d_feh,marker='o',lw=0,color='black')
+    
+    p = np.polyfit(feh_true,d_feh,deg=1)
+    xx = np.linspace(-0.5,0.5,200)
+    yy = np.polyval(p,xx)
+    ax.plot(xx,yy,color='crimson',label='Linear fit\n$p_1$={:0.4f}\n$p_2$={:0.4f}'.format(p[0],p[1]))
+    ax.legend(loc='upper right')
+    ax.set_xlabel('[Fe/H]',labelpad=0)
+    ax.set_ylabel('$\Delta$[Fe/H] = $\mathrm{[Fe/H]}_{\mathrm{Recovered}}$ - $\mathrm{[Fe/H]}_{\mathrm{True}}$')
+    ax.minorticks_on()
