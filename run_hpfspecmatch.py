@@ -9,7 +9,7 @@ if __name__=='__main__':
     parser.add_argument("--savefolder",type=str,default="specmatch_results",help="Specify foldername to save (e.g. results_123)")
     parser.add_argument("--orders",type=int,default=[4,5,6,14,15,16,17],help="Orders to use for HPF SpecMatch, e.g., --orders 4 5 6",nargs='+')
     parser.add_argument("--vsinimax",type=int,default=40.,help="Maximum vsini to fit for in km/s")
-    parser.add_argument("--calibrate_feh",default=True,help="Calibrate the Fe/H",action="store_true")
+    parser.add_argument("--calibrate_feh",default=False,help="Calibrate the Fe/H",action="store_true")
     parser.add_argument("--scaleres",type=float,default=1.,help="Residual Scaling Factor")
 
     args = parser.parse_args()
