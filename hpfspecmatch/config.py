@@ -1,13 +1,18 @@
 import os
 import glob
 # HPF wavelength bounds for different orders in Angstrom
-BOUNDS = {'4': [8540.,8640.],
+BOUNDS = {
+        #   '3': [8422.,8518.],
+          '4': [8540.,8640.],
           '5': [8670.,8750.],
           '6': [8790.,8885.],
           '14': [9940.,10055.],
           '15': [10105.,10220.],
           '16': [10280.,10395.],
-          '17': [10460.,10570.]}
+          '17': [10462.,10568.],
+          '18': [10637.,10758.],
+        #   '19': [10827.,10953.],
+          '26': [12375.,12515.]}
 
 # Directory name of package
 DIRNAME = os.path.dirname(os.path.dirname(__file__))
