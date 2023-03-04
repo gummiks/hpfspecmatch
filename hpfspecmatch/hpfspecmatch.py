@@ -20,7 +20,7 @@ from .likelihood import ll_normal_es_py, ll_normal_ev_py
 from . import config
 from matplotlib.gridspec import GridSpec
 from matplotlib import rcParams
-rcParams["savefig.dpi"] = 100
+rcParams["savefig.dpi"] = 400
 rcParams['mathtext.fontset'] = 'stix'
 rcParams['font.family'] = 'STIXGeneral'
 rcParams['font.weight'] = "normal"
@@ -162,7 +162,7 @@ class FitLinCombSpec(object):
         
     def plot_model(self,pv):
         pv_all = self.lpf.get_pv_all(pv)
-        fig, (ax, bx) = plt.subplots(nrows=2,dpi=200,sharex=True,gridspec_kw={'height_ratios':[5,2]})
+        fig, (ax, bx) = plt.subplots(nrows=2,dpi=400,sharex=True,gridspec_kw={'height_ratios':[5,2]})
         ax.plot(self.lpf.w,self.lpf.data_target['f'],color='black',label='Target',lw=1)
         ff = self.lpf.compute_model(pv)
         
@@ -195,7 +195,7 @@ class FitLinCombSpec(object):
         pv_all = self.lpf.get_pv_all(pv)
         self.calculate_stellar_parameters(pv_all)
         if fig is None and ax is None:
-            fig, ax = plt.subplots(dpi=200)
+            fig, ax = plt.subplots(dpi=400)
         ax.plot(w,self.lpf.data_target['f'],color='black',label='Target',lw=1)
         ff = self.lpf.compute_model(pv)
         ax.plot(w,ff,color='crimson',label='Composite',alpha=0.5,lw=1.5)
@@ -222,7 +222,7 @@ class FitLinCombSpec(object):
         #ax.set_title('log_ln={}, c={}'.format(self.lpf(pv),str(self.lpf.get_pv_all(pv))),fontsize=10)
         utils.ax_apply_settings(ax,ticksize=10)
         fig.tight_layout()
-        fig.savefig(savename,dpi=200)
+        fig.savefig(savename,dpi=400)
         print('Saved to {}'.format(savename))
             
     def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=True,plot_priors=True,sample_ball=False):
@@ -325,7 +325,7 @@ class FitTargetRefStarVsiniPolynomial(object):
     def plot_model(self,pv):
         vsini = pv[0]
         coeffs = pv[1:]
-        fig, (ax, bx) = plt.subplots(nrows=2,dpi=200,sharex=True,gridspec_kw={'height_ratios':[5,2]})
+        fig, (ax, bx) = plt.subplots(nrows=2,dpi=400,sharex=True,gridspec_kw={'height_ratios':[5,2]})
         ax.plot(self.chi2f.w,self.chi2f.data_target['f'],color='black',label='Target',lw=1)
         ff = self.chi2f.compute_model(pv)
         ax.plot(self.chi2f.w,np.polynomial.chebyshev.chebval(self.chi2f.w,coeffs))
@@ -481,7 +481,7 @@ def chi2spectraPolyLoop(ww,H1,Hrefs,plot_all=False,plot_chi=True,verbose=True,ma
     Hrefs_best = hpfspec.HPFSpecList(np.array(Hrefs)[df_best['index'].values]);#SEJ
     
     if plot_chi:
-        fig, ax = plt.subplots(dpi=200)
+        fig, ax = plt.subplots(dpi=400)
         ax.plot(df.chi2,lw=0,marker='h')
         ax.set_xticks(range(len(chis)))
         ax.set_ylabel('$\chi^2$')
@@ -599,8 +599,7 @@ def run_specmatch(Htarget,Hrefs,ww,v,df_library,df_target=None,plot=True,savefol
     #LCS.plot_model(LCS.min_pv)# SEJ
     if plot:
         LCS.plot_model_with_components(LCS.min_pv,names=df_chi_best['OBJECT_ID'].values,title = "",
-                                       savename=savefolder+targetname+'_compositecomparison.png',scaleres=scaleres)
-        
+                                    savename=savefolder+targetname+'_compositecomparison.png',scaleres=scaleres)
     teff = LCS.teff
     feh = LCS.feh
     logg = LCS.logg
@@ -648,7 +647,7 @@ def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig
         plot_chi_teff_feh_logg_panel(df_chi.chi2,df_chi.Teff,df_chi['[Fe/H]'],df_chi['log(g)'],savename='chi2.pdf')
     """
     if fig is None:
-        fig, (ax, bx, cx) = plt.subplots(dpi=200,ncols=3,sharey=True,figsize=(6,2))
+        fig, (ax, bx, cx) = plt.subplots(dpi=400,ncols=3,sharey=True,figsize=(6,2))
     df = pd.DataFrame(list(zip(chis,teff,feh,logg)),columns=['chi2','teff','feh','logg'])
     df_best = df.sort_values('chi2').reset_index(drop=True)[0:5]
     ax.plot(teff,chis,marker='o',lw=0)
@@ -677,7 +676,7 @@ def plot_chi_teff_feh_logg_panel(chis,teff,feh,logg,savename='chi2panel.pdf',fig
         #xx.set_ylim(3e3,1.5e5)
     bx.set_title(title,fontsize=14)
     fig.subplots_adjust(wspace=0.1,right=0.97,left=0.08,bottom=0.15,top=0.95)
-    fig.savefig(savename,dpi=200)
+    fig.savefig(savename,dpi=400)
     print('Saved to: {}'.format(savename))
     
 def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_logg=None,fig=None,ax=None,bx=None,
@@ -698,7 +697,7 @@ def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_lo
         
     """
     if ax is None and bx is None and fig is None:
-        fig, (ax,bx) = plt.subplots(ncols=2,dpi=200,sharey=True,figsize=(10,3))
+        fig, (ax,bx) = plt.subplots(ncols=2,dpi=400,sharey=True,figsize=(10,3))
 
     colors = utils.get_cmap_colors(p=chis)
     df_chi = pd.DataFrame(zip(teff,feh,logg,chis),columns=['Teff','[Fe/H]','log(g)','chi2'])
@@ -737,7 +736,7 @@ def plot_teff_feh_logg_corr_panel(teff,feh,logg,chis,e_teff=None,e_feh=None,e_lo
         xx.grid(lw=0.4,alpha=0.3)
         utils.ax_set_linewidth(xx,1.3)
     
-    fig.savefig(savename,dpi=200)
+    fig.savefig(savename,dpi=400)
     print('Saved to: {}'.format(savename))
 
 
@@ -856,7 +855,7 @@ def plot_crossvalidation_results_1d(order,df_crossval,savefolder):
     
     """
     print('plotting 1D crossval')
-    fig, (ax,bx,cx) = plt.subplots(nrows=3,sharex=True,dpi=200)
+    fig, (ax,bx,cx) = plt.subplots(nrows=3,sharex=True,dpi=400)
     x =range(len(df_crossval))
     label = 'std={:0.2f}K'.format(np.std(df_crossval.d_teff))
     print(label)
@@ -891,7 +890,7 @@ def plot_crossvalidation_results_2d(order,df_crossval,savefolder):
     """
     print('plotting 2D crossval')
     dd = df_crossval[["d_teff","d_feh","d_logg"]]
-    fig, axx = plt.subplots(nrows=3,ncols=3,dpi=200,figsize=(6,6))
+    fig, axx = plt.subplots(nrows=3,ncols=3,dpi=400,figsize=(6,6))
 
     for xx in [axx[0,1],axx[0,2],axx[1,2]]:
         xx.axes.set_axis_off()
@@ -1031,13 +1030,13 @@ def run_crossvalidation_for_orders(order, df_lib=config.PATH_LIBRARY_DB, HLS=Non
     df_crossval['logg_true'] = df_crossval.logg - df_crossval.d_logg
     df_crossval['targetname'] = obj_names
 
-    fig, ax = plt.subplots(dpi=200)
+    fig, ax = plt.subplots(dpi=400)
     plot_crossval_feh_delta_feh(df_crossval['feh_true'].values,df_crossval['d_feh'].values,ax=ax)
-    fig.savefig('{}/crossvalidation_feh_delta_feh_o{}.png'.format(outputdir,order),dpi=200)
+    fig.savefig('{}/crossvalidation_feh_delta_feh_o{}.png'.format(outputdir,order),dpi=400)
     
     result_savename = '{}/crossvalidation_results_o{}.csv'.format(outputdir,order)
     df_crossval.to_csv(result_savename, index=False)
-    print('Saved tesult to: {}'.format(result_savename))
+    print('Saved result to: {}'.format(result_savename))
     
     if plot_results == True:
         plot_crossvalidation_results_1d(order,df_crossval,outputdir)
@@ -1073,7 +1072,7 @@ def plot_crossvalidation_results_main(order,df_crossval,savefolder):
     """
     PW = 10.
     PH = 3.
-    fig = plt.figure(figsize=(PW,PH),dpi=200)
+    fig = plt.figure(figsize=(PW,PH),dpi=400)
     gs0 = GridSpec(1,2)
     gs0.update(top=0.92, bottom = 0.11,wspace=0.01,left=0.05,right=0.6)
 
@@ -1121,7 +1120,7 @@ def plot_crossval_feh_delta_feh(feh_true,d_feh,ax=None):
         plot_crossval_feh_delta_feh(df_res['[Fe/H]'].values,df_res['d_feh'].values)
     """
     if ax is None:
-        fig, ax = plt.subplots(dpi=200)
+        fig, ax = plt.subplots(dpi=400)
     ax.plot(feh_true,d_feh,marker='o',lw=0,color='black')
     
     p = np.polyfit(feh_true,d_feh,deg=1)
