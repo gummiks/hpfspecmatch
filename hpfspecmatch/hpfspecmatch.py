@@ -200,6 +200,9 @@ class FitLinCombSpec(object):
         ff = self.lpf.compute_model(pv)
         ax.plot(w,ff,color='crimson',label='Composite',alpha=0.5,lw=1.5)
 
+        list_ = [w, self.lpf.data_target['f'], ff, (self.lpf.data_target['f']-ff)]
+        colnames = ['wl','target','composite','residuals']
+
         for i in range(5):
             ax.plot(w,self.lpf.data_refs['f'][i]+(5.0-i),lw=1,color='black')
             if names is not None:
@@ -209,6 +212,8 @@ class FitLinCombSpec(object):
                 label = '$c_{}$={:0.5f}'.format(i+1,pv_all[i])
                 label+= ', Teff={:0.0f}K'.format(self.teffs[i])
             ax.text(w[0],(6.12-i),label,color='black',fontsize=8)
+            list_.append( self.lpf.data_refs['f'][i] )
+            colnames.append( names[i].replace(' ','_') )
 
         ax.text(w[0],1.15,'Target Spectrum (Black), Composite Spectrum (Red)',fontsize=8)
         ax.text(w[0],0.15,'Residual: Target - Composite (Scale: {:0.0f}x)'.format(scaleres),fontsize=8)
@@ -224,6 +229,9 @@ class FitLinCombSpec(object):
         fig.tight_layout()
         fig.savefig(savename,dpi=400)
         print('Saved to {}'.format(savename))
+        
+        #Save the data
+        pd.DataFrame(np.vstack(list_).T,columns=colnames).to_csv(savename[:-3]+'csv',index=False)
             
     def minimize_PyDE(self,npop=100,de_iter=200,mc_iter=1000,mcmc=True,threads=8,maximize=True,plot_priors=True,sample_ball=False):
         """
